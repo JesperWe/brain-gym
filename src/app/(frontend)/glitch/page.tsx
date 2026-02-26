@@ -271,7 +271,7 @@ export default function GlitchPage() {
 
     setButtonStates(states)
     setButtonsDisabled(true)
-    scheduleNext()
+    scheduleNext(value === q.answer ? 1500 : 3000)
   }
 
   function triggerBonus() {
