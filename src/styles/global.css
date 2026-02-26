@@ -1,0 +1,89 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    --background: oklch(0.145 0 0);
+    --foreground: oklch(0.913 0.019 285.87);
+    --card: oklch(0.17 0.04 280);
+    --card-foreground: oklch(0.913 0.019 285.87);
+    --popover: oklch(0.17 0.04 280);
+    --popover-foreground: oklch(0.913 0.019 285.87);
+    --primary: oklch(0.707 0.165 254.62);
+    --primary-foreground: oklch(0.98 0.005 285);
+    --secondary: oklch(0.274 0.06 281);
+    --secondary-foreground: oklch(0.913 0.019 285.87);
+    --muted: oklch(0.274 0.06 281);
+    --muted-foreground: oklch(0.632 0.05 280);
+    --accent: oklch(0.274 0.06 281);
+    --accent-foreground: oklch(0.913 0.019 285.87);
+    --destructive: oklch(0.577 0.245 27.33);
+    --border: oklch(0.35 0.04 280);
+    --input: oklch(0.35 0.04 280);
+    --ring: oklch(0.707 0.165 254.62);
+    --radius: 0.625rem;
+  }
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --radius-2xl: calc(var(--radius) + 8px);
+  --radius-3xl: calc(var(--radius) + 12px);
+
+  /* Game-specific tokens */
+  --color-glitch-bg-dark: #1e1b4b;
+  --color-glitch-bg-mid: #312e81;
+
+  --color-glitch-accent: #818cf8;
+  --color-glitch-accent-bold: #6366f1;
+  --color-glitch-accent-purple: #8b5cf6;
+  --color-glitch-label: #a5b4fc;
+
+  --color-glitch-text: #e2e8f0;
+  --color-glitch-muted: #94a3b8;
+  --color-glitch-placeholder: #6366a0;
+
+  --color-glitch-success: #4ade80;
+  --color-glitch-error: #f87171;
+  --color-glitch-warning: #facc15;
+
+  --color-glass-4: rgba(255, 255, 255, 0.04);
+  --color-glass-5: rgba(255, 255, 255, 0.05);
+  --color-glass-6: rgba(255, 255, 255, 0.06);
+  --color-glass-8: rgba(255, 255, 255, 0.08);
+  --color-glass-10: rgba(255, 255, 255, 0.1);
+  --color-glass-12: rgba(255, 255, 255, 0.12);
+  --color-glass-15: rgba(255, 255, 255, 0.15);
+
+  --font-glitch: 'Segoe UI', system-ui, -apple-system, sans-serif;
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}

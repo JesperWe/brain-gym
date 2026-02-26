@@ -1,0 +1,74 @@
+{
+  "name": "maths-glitch",
+  "version": "1.0.0",
+  "description": "A blank template to get started with Payload 3.0",
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "build": "cross-env NODE_OPTIONS=\"--no-deprecation --max-old-space-size=8000\" next build",
+    "dev": "cross-env NODE_OPTIONS=--no-deprecation next dev",
+    "devsafe": "rm -rf .next && cross-env NODE_OPTIONS=--no-deprecation next dev",
+    "generate:importmap": "cross-env NODE_OPTIONS=--no-deprecation payload generate:importmap",
+    "generate:types": "cross-env NODE_OPTIONS=--no-deprecation payload generate:types",
+    "lint": "cross-env NODE_OPTIONS=--no-deprecation next lint",
+    "payload": "cross-env NODE_OPTIONS=--no-deprecation payload",
+    "start": "cross-env NODE_OPTIONS=--no-deprecation next start",
+    "test": "pnpm run test:int && pnpm run test:e2e",
+    "test:e2e": "cross-env NODE_OPTIONS=\"--no-deprecation --import=tsx/esm\" playwright test --config=playwright.config.ts",
+    "test:int": "cross-env NODE_OPTIONS=--no-deprecation vitest run --config ./vitest.config.mts"
+  },
+  "dependencies": {
+    "@iconify/react": "^6.0.2",
+    "@payloadcms/db-postgres": "3.77.0",
+    "@payloadcms/db-vercel-postgres": "^3.77.0",
+    "@payloadcms/next": "3.77.0",
+    "@payloadcms/richtext-lexical": "3.77.0",
+    "@payloadcms/ui": "3.77.0",
+    "@radix-ui/react-slot": "^1.2.4",
+    "@tailwindcss/postcss": "^4.2.1",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "cross-env": "^10.1.0",
+    "dotenv": "17.3.1",
+    "graphql": "^16.8.1",
+    "lucide-react": "^0.575.0",
+    "next": "16.1.6",
+    "payload": "3.77.0",
+    "postcss": "^8.5.6",
+    "react": "19.2.4",
+    "react-dom": "19.2.4",
+    "sharp": "0.34.5",
+    "tailwind-merge": "^3.5.0",
+    "tailwindcss": "^4.2.1"
+  },
+  "devDependencies": {
+    "@iconify/tailwind": "^1.2.0",
+    "@playwright/test": "1.58.2",
+    "@testing-library/react": "16.3.2",
+    "@types/node": "25.3.1",
+    "@types/react": "19.2.14",
+    "@types/react-dom": "19.2.3",
+    "@vitejs/plugin-react": "5.1.4",
+    "eslint": "^10.0.2",
+    "eslint-config-next": "16.1.6",
+    "jsdom": "28.1.0",
+    "prettier": "^3.4.2",
+    "tsx": "4.21.0",
+    "typescript": "5.9.3",
+    "vite-tsconfig-paths": "6.1.1",
+    "vitest": "4.0.18"
+  },
+  "engines": {
+    "node": "^18.20.2 || >=20.9.0",
+    "pnpm": "^9 || ^10"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "bufferutil",
+      "esbuild",
+      "sharp",
+      "unrs-resolver",
+      "utf-8-validate"
+    ]
+  }
+}

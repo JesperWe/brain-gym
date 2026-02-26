@@ -1,0 +1,151 @@
+/* ── Root ── */
+.glitch-game {
+  font-family: var(--font-glitch);
+  background: linear-gradient(135deg, var(--color-glitch-bg-dark), var(--color-glitch-bg-mid), var(--color-glitch-bg-dark));
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  color: var(--color-glitch-text);
+}
+
+/* Tailwind preflight handles the reset — no manual * reset needed */
+
+/* ── Input pseudo-selectors ── */
+.glitch-game .glitch-input:focus { border-color: var(--color-glitch-accent); }
+.glitch-game .glitch-input::placeholder { color: var(--color-glitch-placeholder); }
+
+/* ── Button hovers ── */
+.glitch-game .btn-start:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(99, 102, 241, 0.4); }
+.glitch-game .btn-start:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.glitch-game .close-btn:hover { background: rgba(248, 113, 113, 0.2); color: var(--color-glitch-error); }
+
+.glitch-game .option-btn:hover:not(:disabled) {
+  background: var(--color-glass-15);
+  transform: scale(1.04);
+}
+.glitch-game .option-btn:disabled { cursor: default; }
+
+/* ── Countdown ── */
+.countdown-screen {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 80vh;
+}
+
+.countdown-number {
+  font-size: 8rem;
+  font-weight: 900;
+  color: #fff;
+  text-shadow: 0 0 40px rgba(129, 140, 248, 0.6), 0 0 80px rgba(129, 140, 248, 0.3);
+  animation: glitch-countdownPop 0.9s ease-out forwards;
+}
+
+@keyframes glitch-countdownPop {
+  0%   { transform: scale(0.3) rotate(-10deg); opacity: 0; }
+  30%  { transform: scale(1.3) rotate(3deg); opacity: 1; }
+  50%  { transform: scale(0.95) rotate(-1deg); }
+  70%  { transform: scale(1.05); }
+  100% { transform: scale(1) rotate(0deg); opacity: 0.2; }
+}
+
+/* ── Timer bar ── */
+.question-timer-track {
+  height: 6px;
+  background: var(--color-glass-10);
+  border-radius: var(--radius-sm);
+  margin-bottom: 20px;
+  overflow: hidden;
+}
+
+.question-timer-bar {
+  height: 100%;
+  width: 100%;
+  background: var(--color-glitch-success);
+  border-radius: var(--radius-sm);
+  transition: background 0.3s;
+}
+
+/* ── Division display ── */
+.division {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  line-height: 1.1;
+}
+
+.dividend {
+  padding-bottom: 4px;
+  border-bottom: 3px solid #fff;
+}
+
+.divisor {
+  padding-top: 4px;
+}
+
+/* ── Bonus star overlay ── */
+.bonus-star-overlay {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  z-index: 100;
+  animation: glitch-bonusFade 1.5s ease-out forwards;
+}
+
+.bonus-star {
+  font-size: 6rem;
+  animation: glitch-bonusPulse 1.5s ease-in-out;
+}
+
+.bonus-text {
+  font-size: 2.5rem;
+  font-weight: 900;
+  color: var(--color-glitch-accent);
+  text-shadow: 0 0 20px rgba(129, 140, 248, 0.6);
+  animation: glitch-bonusPulse 1.5s ease-in-out;
+}
+
+@keyframes glitch-bonusPulse {
+  0%   { transform: scale(0.3); opacity: 0; }
+  15%  { transform: scale(1.4); opacity: 1; }
+  30%  { transform: scale(0.9); }
+  45%  { transform: scale(1.2); }
+  60%  { transform: scale(1); }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+@keyframes glitch-bonusFade {
+  0%, 70% { opacity: 1; }
+  100%    { opacity: 0; }
+}
+
+/* ── Option button states (need !important + animations) ── */
+.option-btn.correct {
+  background: rgba(74, 222, 128, 0.3) !important;
+  border-color: var(--color-glitch-success) !important;
+  color: var(--color-glitch-success) !important;
+  animation: glitch-pulse 0.4s;
+}
+
+.option-btn.wrong {
+  background: rgba(248, 113, 113, 0.3) !important;
+  border-color: var(--color-glitch-error) !important;
+  color: var(--color-glitch-error) !important;
+  animation: glitch-shake 0.4s;
+}
+
+@keyframes glitch-pulse {
+  0%, 100% { transform: scale(1); }
+  50%      { transform: scale(1.08); }
+}
+
+@keyframes glitch-shake {
+  0%, 100% { transform: translateX(0); }
+  25%      { transform: translateX(-6px); }
+  75%      { transform: translateX(6px); }
+}
