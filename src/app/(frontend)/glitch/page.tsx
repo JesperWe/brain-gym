@@ -15,11 +15,9 @@ import {
 } from './sound'
 import './glitch.css'
 
-const AVATARS = ['🦊', '🐱', '🐶', '🐸', '🦁', '🐼', '🐨', '🐯', '🦄', '🐙', '🐝', '🦋']
-
 export default function GlitchPage() {
   const [playerName, setPlayerName] = useState('')
-  const [playerAvatar, setPlayerAvatar] = useState(AVATARS[0])
+  const [playerAvatar, setPlayerAvatar] = useState('🦊')
   const [gameDuration, setGameDuration] = useState(1)
   const [currentScreen, setCurrentScreen] = useState<GameScreen>('setup')
   const [gameHistory, setGameHistory] = useState<GameRecord[]>([])
@@ -71,8 +69,16 @@ export default function GlitchPage() {
     gameHistoryRef.current = gameHistory
   }, [gameHistory])
 
-  // Load history from localStorage on mount
+  // Load player info and history from localStorage on mount
   useEffect(() => {
+    try {
+      const player = localStorage.getItem('mathsPlayer')
+      if (player) {
+        const parsed = JSON.parse(player)
+        if (parsed.name) setPlayerName(parsed.name)
+        if (parsed.avatar) setPlayerAvatar(parsed.avatar)
+      }
+    } catch {}
     const stored = localStorage.getItem('mathsHistory')
     if (stored) {
       const parsed = JSON.parse(stored)
@@ -332,40 +338,12 @@ export default function GlitchPage() {
             Glitch or Bonus?
           </h1>
 
-          <div className="bg-glass-8 rounded-2xl p-4 mb-4 backdrop-blur-sm border border-glass-10">
-            <label className="block text-sm font-semibold uppercase tracking-widest text-glitch-label mb-2.5">
-              Your Name
-            </label>
-            <input
-              type="text"
-              className="glitch-input w-full px-4 py-3 border-2 border-glass-15 rounded-xl bg-glass-6 text-white text-lg outline-none transition-colors"
-              placeholder="Enter your name..."
-              value={playerName}
-              maxLength={20}
-              onChange={(e) => setPlayerName(e.target.value.trim())}
-            />
-          </div>
-
-          <div className="bg-glass-8 rounded-2xl p-4 mb-4 backdrop-blur-sm border border-glass-10">
-            <label className="block text-sm font-semibold uppercase tracking-widest text-glitch-label mb-2.5">
-              Choose Your Avatar
-            </label>
-            <div className="grid grid-cols-6 gap-2">
-              {AVATARS.map((a) => (
-                <button
-                  key={a}
-                  className={`text-3xl p-2 border-2 rounded-xl cursor-pointer transition-all ${
-                    a === playerAvatar
-                      ? 'border-glitch-accent bg-glitch-accent/20 scale-110'
-                      : 'border-transparent bg-glass-5 hover:bg-glass-12 hover:scale-110'
-                  }`}
-                  onClick={() => setPlayerAvatar(a)}
-                >
-                  {a}
-                </button>
-              ))}
+          {playerName && (
+            <div className="flex items-center justify-center gap-2 mb-4">
+              <span className="text-3xl">{playerAvatar}</span>
+              <span className="text-lg font-semibold text-white">{playerName}</span>
             </div>
-          </div>
+          )}
 
           <div className="bg-glass-8 rounded-2xl p-4 mb-4 backdrop-blur-sm border border-glass-10">
             <label className="block text-sm font-semibold uppercase tracking-widest text-glitch-label mb-2.5">

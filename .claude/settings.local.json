@@ -5,7 +5,8 @@
       "Bash(ls /Users/jesper.weissglas/Sandbox/Maths/maths-glitch/src/app/\\\\\\(frontend\\\\\\)/glitch/)",
       "Bash(python3 -c \":*)",
       "Bash(python3:*)",
-      "Bash(pnpm add @radix-ui/react-slot)"
+      "Bash(pnpm add @radix-ui/react-slot)",
+      "Bash(pnpm add @radix-ui/react-dialog)"
     ]
   }
 }
