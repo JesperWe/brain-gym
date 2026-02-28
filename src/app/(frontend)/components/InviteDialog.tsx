@@ -22,7 +22,7 @@ export function InviteDialog({ open, fromName, fromAvatar, duration, onAccept, o
   return (
     <Dialog open={open} onOpenChange={() => {}}>
       <DialogContent
-        className="sm:max-w-sm border-glass-15 bg-glitch-bg-dark text-glitch-text animate-invite-pulse"
+        className="max-w-[calc(100vw-2rem)] sm:max-w-sm border-glass-15 bg-glitch-bg-dark text-glitch-text animate-invite-pulse"
         onInteractOutside={(e) => e.preventDefault()}
       >
         <DialogHeader>

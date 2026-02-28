@@ -425,7 +425,7 @@ export default function HomePage() {
       {/* Challenge duration selector */}
       {challengeTarget && (
         <Dialog open={true} onOpenChange={() => setChallengeTarget(null)}>
-          <DialogContent className="sm:max-w-sm border-glass-15 bg-glitch-bg-dark text-glitch-text">
+          <DialogContent className="max-w-[calc(100vw-2rem)] sm:max-w-sm border-glass-15 bg-glitch-bg-dark text-glitch-text">
             <DialogHeader>
               <DialogTitle className="text-white text-center">
                 Challenge {challengeTarget.avatar} {challengeTarget.name}

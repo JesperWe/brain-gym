@@ -20,7 +20,7 @@ export function SetupScreen({
 }: SetupScreenProps) {
   return (
     <div className="glitch-game">
-      <div className="w-full min-w-[500px] max-w-[520px] px-4 py-6">
+      <div className="w-full max-w-[520px] px-4 py-6">
         <h1 className="text-center text-2xl font-bold mb-6 text-white">
           <Icon
             icon="noto:thinking-face"

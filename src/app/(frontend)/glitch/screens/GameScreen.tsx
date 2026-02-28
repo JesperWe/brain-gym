@@ -36,7 +36,7 @@ export function GameScreen({
 }: GameScreenProps) {
   return (
     <div className="glitch-game">
-      <div className="w-full min-w-[500px] max-w-[520px] px-4 py-6">
+      <div className="w-full max-w-[520px] px-4 py-6">
         <div className="flex justify-between items-center mb-3">
           <div className="flex items-center gap-2">
             <span className="text-2xl">{playerAvatar}</span>
@@ -66,8 +66,8 @@ export function GameScreen({
 
         {currentQuestion && (
           <>
-            <div className="text-center mb-6 p-6 bg-glass-6 rounded-3xl border border-glass-10">
-              <div className="text-4xl font-bold text-white tracking-wide flex items-center justify-center gap-3">
+            <div className="text-center mb-4 sm:mb-6 p-4 sm:p-6 bg-glass-6 rounded-3xl border border-glass-10">
+              <div className="text-3xl sm:text-4xl font-bold text-white tracking-wide flex items-center justify-center gap-3">
                 {currentQuestion.type === 'multiplication' ? (
                   <>
                     {currentQuestion.a} &middot; {currentQuestion.b}
@@ -82,11 +82,11 @@ export function GameScreen({
               </div>
             </div>
 
-            <div className="grid grid-cols-3 gap-2.5">
+            <div className="grid grid-cols-3 gap-1.5 sm:gap-2.5">
               {currentQuestion.options.map((opt, i) => (
                 <button
                   key={`${opt}-${i}`}
-                  className={`option-btn py-4 border-2 border-glass-15 rounded-xl bg-glass-6 text-glitch-text text-xl font-bold cursor-pointer transition-all ${buttonStates[opt] || ''}`}
+                  className={`option-btn py-3 sm:py-4 border-2 border-glass-15 rounded-xl bg-glass-6 text-glitch-text text-lg sm:text-xl font-bold cursor-pointer transition-all ${buttonStates[opt] || ''}`}
                   disabled={buttonsDisabled}
                   onClick={() => onAnswer(opt)}
                 >

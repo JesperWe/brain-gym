@@ -32,7 +32,7 @@ export function ResultsScreen({
 
     return (
       <div className="glitch-game">
-        <div className="w-full min-w-[500px] max-w-[520px] px-4 py-6">
+        <div className="w-full max-w-[520px] px-4 py-6">
           <h1 className="text-center text-3xl font-bold mb-6 text-white">
             {resultEmoji} {won ? 'You Win!' : tied ? "It's a Tie!" : 'Game Over!'}
           </h1>
@@ -75,7 +75,7 @@ export function ResultsScreen({
 
   return (
     <div className="glitch-game">
-      <div className="w-full min-w-[500px] max-w-[520px] px-4 py-6">
+      <div className="w-full max-w-[520px] px-4 py-6">
         <h1 className="text-center text-3xl font-bold mb-6 text-white">{emoji} Game Over!</h1>
 
         <div className="text-center px-4 py-8 bg-glass-8 rounded-3xl border border-glass-10 mb-5">
