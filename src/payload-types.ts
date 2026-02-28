@@ -69,6 +69,8 @@ export interface Config {
   collections: {
     users: User;
     media: Media;
+    players: Player;
+    games: Game;
     'payload-kv': PayloadKv;
     'payload-locked-documents': PayloadLockedDocument;
     'payload-preferences': PayloadPreference;
@@ -78,6 +80,8 @@ export interface Config {
   collectionsSelect: {
     users: UsersSelect<false> | UsersSelect<true>;
     media: MediaSelect<false> | MediaSelect<true>;
+    players: PlayersSelect<false> | PlayersSelect<true>;
+    games: GamesSelect<false> | GamesSelect<true>;
     'payload-kv': PayloadKvSelect<false> | PayloadKvSelect<true>;
     'payload-locked-documents': PayloadLockedDocumentsSelect<false> | PayloadLockedDocumentsSelect<true>;
     'payload-preferences': PayloadPreferencesSelect<false> | PayloadPreferencesSelect<true>;
@@ -160,6 +164,34 @@ export interface Media {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "players".
+ */
+export interface Player {
+  id: number;
+  ablyClientId: string;
+  name: string;
+  avatar: string;
+  lastSeenAt: string;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "games".
+ */
+export interface Game {
+  id: number;
+  player1: number | Player;
+  player2: number | Player;
+  player1Score: number;
+  player2Score: number;
+  endedAt: string;
+  channel: string;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "payload-kv".
  */
 export interface PayloadKv {
@@ -189,6 +221,14 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'media';
         value: number | Media;
+      } | null)
+    | ({
+        relationTo: 'players';
+        value: number | Player;
+      } | null)
+    | ({
+        relationTo: 'games';
+        value: number | Game;
       } | null);
   globalSlug?: string | null;
   user: {
@@ -271,6 +311,32 @@ export interface MediaSelect<T extends boolean = true> {
   height?: T;
   focalX?: T;
   focalY?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "players_select".
+ */
+export interface PlayersSelect<T extends boolean = true> {
+  ablyClientId?: T;
+  name?: T;
+  avatar?: T;
+  lastSeenAt?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "games_select".
+ */
+export interface GamesSelect<T extends boolean = true> {
+  player1?: T;
+  player2?: T;
+  player1Score?: T;
+  player2Score?: T;
+  endedAt?: T;
+  channel?: T;
+  updatedAt?: T;
+  createdAt?: T;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema

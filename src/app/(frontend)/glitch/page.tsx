@@ -3,7 +3,7 @@
 import { Suspense, useState, useEffect, useRef, useCallback } from 'react'
 import { useSearchParams } from 'next/navigation'
 import type { GameRecord, GameScreen, Question } from './types'
-import type { PlayerPresenceData, MultiplayerGameRecord, GameQuestion, GameAnswer, GameEnd, GameForfeit, GameMessage } from '@/lib/multiplayer/types'
+import type { PlayerPresenceData, MultiplayerGameRecord, GameQuestion, GameAnswer, GameEnd, GameForfeit, GameResult, GameMessage } from '@/lib/multiplayer/types'
 import { generateQuestion } from './questions'
 import { Icon } from '@iconify/react'
 import {
@@ -38,6 +38,7 @@ function GlitchPageInner() {
   const mpRole = searchParams.get('role') as 'host' | 'guest' | null
   const mpOpponentName = searchParams.get('opponentName') || ''
   const mpOpponentAvatar = searchParams.get('opponentAvatar') || ''
+  const mpOpponentId = searchParams.get('opponentId') || ''
 
   const [playerName, setPlayerName] = useState('')
   const [playerAvatar, setPlayerAvatar] = useState('🦊')
@@ -668,6 +669,23 @@ function GlitchPageInner() {
         const historyChannel = getHistoryChannel(client)
         saveGameRecord(historyChannel, playerIdRef.current, mpRecord).catch(() => {})
       } catch {}
+
+      // Host publishes game-result for the webhook to record in Payload
+      if (mpRole === 'host' && gameChannelRef.current) {
+        const result: GameResult = {
+          type: 'game-result',
+          player1Id: playerIdRef.current,
+          player1Name: playerName,
+          player1Avatar: playerAvatar,
+          player1Score: correct,
+          player2Id: mpOpponentId,
+          player2Name: opponentName,
+          player2Avatar: opponentAvatar,
+          player2Score: opponentScoreRef.current,
+          channel: mpChannel,
+        }
+        publishMessage(gameChannelRef.current, result)
+      }
 
       // Update presence with lastGame
       if (playersChannelRef.current) {

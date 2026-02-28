@@ -16,4 +16,10 @@ export function register() {
       '[maths-glitch] NEXT_PUBLIC_ABLY_API_KEY is not set. Multiplayer features will be disabled.',
     )
   }
+
+  if (!process.env.ABLY_API_KEY) {
+    console.warn(
+      '[maths-glitch] ABLY_API_KEY is not set. Ably webhook signature verification will fail.',
+    )
+  }
 }

@@ -59,7 +59,20 @@ export interface GameForfeit {
   playerAvatar: string
 }
 
-export type GameMessage = GameInvite | GameInviteResponse | GameQuestion | GameAnswer | GameEnd | GameForfeit
+export interface GameResult {
+  type: 'game-result'
+  player1Id: string
+  player1Name: string
+  player1Avatar: string
+  player1Score: number
+  player2Id: string
+  player2Name: string
+  player2Avatar: string
+  player2Score: number
+  channel: string
+}
+
+export type GameMessage = GameInvite | GameInviteResponse | GameQuestion | GameAnswer | GameEnd | GameForfeit | GameResult
 
 export interface MultiplayerGameRecord {
   finishedAt: number

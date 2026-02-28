@@ -178,7 +178,7 @@ export default function HomePage() {
           if (response.accepted) {
             const channelName = getGameChannelName(me.name, response.fromName)
             const duration = challengeDurationRef.current
-            window.location.href = `/glitch?multiplayer=true&channel=${encodeURIComponent(channelName)}&duration=${duration}&role=host&opponentName=${encodeURIComponent(response.fromName)}&opponentAvatar=${encodeURIComponent(response.fromAvatar)}`
+            window.location.href = `/glitch?multiplayer=true&channel=${encodeURIComponent(channelName)}&duration=${duration}&role=host&opponentName=${encodeURIComponent(response.fromName)}&opponentAvatar=${encodeURIComponent(response.fromAvatar)}&opponentId=${encodeURIComponent(response.fromPlayerId)}`
           } else {
             setWaitingFor(null)
             setDeniedBy({ name: response.fromName, avatar: response.fromAvatar })
@@ -280,8 +280,9 @@ export default function HomePage() {
     const duration = incomingInvite.duration
     const oppName = incomingInvite.fromName
     const oppAvatar = incomingInvite.fromAvatar
+    const oppId = incomingInvite.fromPlayerId
     setIncomingInvite(null)
-    window.location.href = `/glitch?multiplayer=true&channel=${encodeURIComponent(channelName)}&duration=${duration}&role=guest&opponentName=${encodeURIComponent(oppName)}&opponentAvatar=${encodeURIComponent(oppAvatar)}`
+    window.location.href = `/glitch?multiplayer=true&channel=${encodeURIComponent(channelName)}&duration=${duration}&role=guest&opponentName=${encodeURIComponent(oppName)}&opponentAvatar=${encodeURIComponent(oppAvatar)}&opponentId=${encodeURIComponent(oppId)}`
   }
 
   async function handleDenyInvite() {
