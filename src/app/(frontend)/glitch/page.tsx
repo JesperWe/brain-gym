@@ -73,7 +73,17 @@ function GlitchPageInner() {
         mpDuration,
         gameDuration,
         dispatch,
-        onDone: doNextQuestion,
+        onDone: () => {
+          if (isMultiplayer && mpRole === 'guest') {
+            // Guest doesn't generate questions. If the host's first question
+            // arrived during countdown, it's already in state — just start the timer.
+            if (stateRef.current.currentQuestion) {
+              timers.startQuestionTimer(onTimeout)
+            }
+            return
+          }
+          doNextQuestion()
+        },
       })
     },
   })
@@ -151,7 +161,11 @@ function GlitchPageInner() {
         const gq = msg as GameQuestion
         if (mpRole === 'guest') {
           dispatch({ type: 'NEW_QUESTION', question: gq.question, questionIndex: gq.questionIndex })
-          timers.startQuestionTimer(onTimeout)
+          // Only start timer if already in game phase.
+          // If still in countdown, timer starts when countdown finishes (see onDone below).
+          if (stateRef.current.phase === 'game') {
+            timers.startQuestionTimer(onTimeout)
+          }
         }
         break
       }
@@ -380,7 +394,8 @@ function GlitchPageInner() {
     if (s.phase !== 'game') return
 
     timers.clearAllTimers()
-    playSound('gameOver')
+    const won = isMultiplayer && s.correctCount > s.opponentScore
+    playSound(won ? 'youWin' : 'gameOver')
 
     const total = s.totalCount
     const correct = s.correctCount

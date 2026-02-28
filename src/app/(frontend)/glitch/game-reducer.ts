@@ -92,7 +92,7 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
     }
 
     case 'NEW_QUESTION': {
-      if (state.phase !== 'game') return state
+      if (state.phase !== 'game' && state.phase !== 'countdown') return state
       return {
         ...state,
         questionPhase: 'waiting',
