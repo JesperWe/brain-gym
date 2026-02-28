@@ -78,9 +78,18 @@ export async function POST(request: Request) {
   const signature = request.headers.get('x-ably-signature')
   const keyHeader = request.headers.get('x-ably-key')
 
+  const apiKey = process.env.ABLY_API_KEY || ''
+  const [expectedKeyId] = apiKey.split(':')
+  console.log('[ably-webhook] X-Ably-Key header:', keyHeader)
+  console.log('[ably-webhook] Expected keyId:', expectedKeyId)
+  console.log('[ably-webhook] X-Ably-Signature present:', !!signature)
+  console.log('[ably-webhook] Body length:', body.length)
+
   if (!verifySignature(body, signature, keyHeader)) {
+    console.log('[ably-webhook] Signature verification FAILED')
     return new Response('Forbidden', { status: 403 })
   }
+  console.log('[ably-webhook] Signature verification OK')
 
   let parsed: { items?: AblyWebhookItem[] }
   try {
