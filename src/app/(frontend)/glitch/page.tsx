@@ -197,8 +197,8 @@ function GlitchPageInner() {
     return () => {
       if (unsubMessages) unsubMessages()
       if (playersChannelRef.current) {
-        playersChannelRef.current.presence.unsubscribe('update', handlePresenceUpdate)
-        playersChannelRef.current.presence.unsubscribe('leave', handlePresenceLeave)
+        playersChannelRef.current.presence.unsubscribe('update')
+        playersChannelRef.current.presence.unsubscribe('leave')
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
