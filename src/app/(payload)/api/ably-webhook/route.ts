@@ -78,13 +78,9 @@ export async function POST(request: Request) {
   const signature = request.headers.get('x-ably-signature')
   const keyHeader = request.headers.get('x-ably-key')
 
-  console.log('[ably-webhook] Received request, body length:', body.length)
-
   if (!verifySignature(body, signature, keyHeader)) {
-    console.log('[ably-webhook] Signature verification FAILED')
     return new Response('Forbidden', { status: 403 })
   }
-  console.log('[ably-webhook] Signature verification OK')
 
   let parsed: { items?: AblyWebhookItem[] }
   try {
@@ -98,16 +94,14 @@ export async function POST(request: Request) {
 
   for (const item of items) {
     try {
-      console.log('[ably-webhook] Item:', JSON.stringify({ source: item.source, channelId: item.data.channelId }))
       if (item.source === 'channel.presence' && item.data.channelId === 'glitch-players') {
         for (const pm of item.data.presence || []) {
+          // Ably presence action codes: 1=enter, 2=leave, 3=present, 4=update
           const action = pm.action
-          console.log(`[ably-webhook] Presence action: ${JSON.stringify(action)} (type: ${typeof action}), clientId: ${pm.clientId}`)
-          if (action === 1 || action === 2 || action === 'enter' || action === 'update' || action === 'present') {
+          if (action === 1 || action === 3 || action === 4 || action === 'enter' || action === 'update' || action === 'present') {
             const data = typeof pm.data === 'string' ? JSON.parse(pm.data) : pm.data
             const name = data?.name || pm.clientId
             const avatar = data?.avatar || '🤖'
-            console.log(`[ably-webhook] Upserting player: clientId=${pm.clientId}, name=${name}, avatar=${avatar}`)
             await upsertPlayer(payload, pm.clientId, name, avatar)
           }
         }
