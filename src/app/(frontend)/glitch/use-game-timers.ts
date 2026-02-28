@@ -73,7 +73,7 @@ export function useGameTimers() {
         return
       }
       opts.dispatch({ type: 'COUNTDOWN_TICK', value: steps[i] })
-      playTone(440 + (3 - steps[i]) * 100, 0.15, 'sine', 0.2)
+      playTone(440 + (3 - steps[i]) * 100, 0.15, 'sine', 0.4)
       i++
       countdownTimerRef.current = setTimeout(showStep, 1000)
     }
