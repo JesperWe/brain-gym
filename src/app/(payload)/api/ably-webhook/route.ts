@@ -124,17 +124,24 @@ export async function POST(request: Request) {
               data.player2Avatar,
             )
 
-            await payload.create({
-              collection: 'games',
-              data: {
-                player1: p1Id,
-                player2: p2Id,
-                player1Score: data.player1Score,
-                player2Score: data.player2Score,
-                endedAt: new Date().toISOString(),
-                channel: data.channel || item.data.channelId || '',
-              },
-            })
+            try {
+              await payload.create({
+                collection: 'games',
+                data: {
+                  gameId: data.gameId,
+                  player1: p1Id,
+                  player2: p2Id,
+                  player1Score: data.player1Score,
+                  player2Score: data.player2Score,
+                  endedAt: new Date().toISOString(),
+                  channel: data.channel || item.data.channelId || '',
+                },
+              })
+            } catch (dupErr: unknown) {
+              // Unique constraint violation means this game was already recorded — ignore
+              const msg = dupErr instanceof Error ? dupErr.message : ''
+              if (!msg.includes('unique') && !msg.includes('duplicate')) throw dupErr
+            }
           }
         }
       }

@@ -673,6 +673,7 @@ function GlitchPageInner() {
       if (mpRole === 'host' && gameChannelRef.current) {
         const result: GameResult = {
           type: 'game-result',
+          gameId: crypto.randomUUID(),
           player1Id: playerIdRef.current,
           player1Name: playerName,
           player1Avatar: playerAvatar,

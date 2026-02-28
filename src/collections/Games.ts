@@ -13,6 +13,13 @@ export const Games: CollectionConfig = {
   },
   fields: [
     {
+      name: 'gameId',
+      type: 'text',
+      required: true,
+      unique: true,
+      index: true,
+    },
+    {
       name: 'player1',
       type: 'relationship',
       relationTo: 'players',

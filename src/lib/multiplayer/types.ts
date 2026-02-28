@@ -61,6 +61,7 @@ export interface GameForfeit {
 
 export interface GameResult {
   type: 'game-result'
+  gameId: string
   player1Id: string
   player1Name: string
   player1Avatar: string

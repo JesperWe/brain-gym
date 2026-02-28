@@ -181,6 +181,7 @@ export interface Player {
  */
 export interface Game {
   id: number;
+  gameId: string;
   player1: number | Player;
   player2: number | Player;
   player1Score: number;
@@ -329,6 +330,7 @@ export interface PlayersSelect<T extends boolean = true> {
  * via the `definition` "games_select".
  */
 export interface GamesSelect<T extends boolean = true> {
+  gameId?: T;
   player1?: T;
   player2?: T;
   player1Score?: T;
