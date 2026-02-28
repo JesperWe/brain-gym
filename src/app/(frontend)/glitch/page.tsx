@@ -5,13 +5,7 @@ import { useSearchParams } from 'next/navigation'
 import type { GameRecord } from './types'
 import type { GameMessage, GameQuestion, GameAnswer, GameForfeit, GameResult, MultiplayerGameRecord } from '@/lib/multiplayer/types'
 import { generateQuestion } from './questions'
-import {
-  resumeAudio,
-  playCorrectSound,
-  playWrongSound,
-  playTimeoutSound,
-  playGameOverSound,
-} from './sound'
+import { resumeAudio, playSound } from './sound'
 import { getAblyClient } from '@/lib/multiplayer/ably-client'
 import { getHistoryChannel, saveGameRecord } from '@/lib/multiplayer/game-history'
 import { gameReducer, createInitialState } from './game-reducer'
@@ -238,7 +232,7 @@ function GlitchPageInner() {
       window.location.href = '/'
       return
     }
-    dispatch({ type: 'RESET_TO_SETUP' })
+    window.location.href = '/'
   }
 
   function startGame() {
@@ -272,7 +266,7 @@ function GlitchPageInner() {
     if (s.questionPhase !== 'waiting' && s.questionPhase !== 'opponent-answered') return
 
     dispatch({ type: 'TIMEOUT', isMultiplayer })
-    playTimeoutSound()
+    playSound('timeout')
 
     if (isMultiplayer) {
       mp.publish({
@@ -303,9 +297,9 @@ function GlitchPageInner() {
 
     if (isCorrect) {
       if (isBonus) timers.triggerBonus(dispatch)
-      else playCorrectSound()
+      else playSound('correct')
     } else {
-      playWrongSound()
+      playSound('wrong')
     }
 
     if (isMultiplayer) {
@@ -332,7 +326,7 @@ function GlitchPageInner() {
     if (s.phase !== 'game') return
 
     timers.clearAllTimers()
-    playGameOverSound()
+    playSound('gameOver')
 
     const total = s.totalCount
     const correct = s.correctCount

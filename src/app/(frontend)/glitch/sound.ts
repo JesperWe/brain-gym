@@ -1,87 +1,37 @@
-let audioCtx: AudioContext | null = null;
+import { zzfxPlay, type ZzfxParams } from './zzfx'
+
+let audioCtx: AudioContext | null = null
 
 function getAudioCtx(): AudioContext {
-  if (!audioCtx) {
-    audioCtx = new AudioContext();
-  }
-  return audioCtx;
+  if (!audioCtx) audioCtx = new AudioContext()
+  return audioCtx
 }
 
 export function resumeAudio() {
-  const ctx = getAudioCtx();
-  if (ctx.state === "suspended") ctx.resume();
+  const ctx = getAudioCtx()
+  if (ctx.state === 'suspended') ctx.resume()
 }
 
-export function playTone(
-  freq: number,
-  duration: number,
-  type: OscillatorType = "sine",
-  gain = 0.6,
-) {
-  const ctx = getAudioCtx();
-  const osc = ctx.createOscillator();
-  const vol = ctx.createGain();
-  osc.type = type;
-  osc.frequency.value = freq;
-  vol.gain.value = gain;
-  vol.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + duration);
-  osc.connect(vol);
-  vol.connect(ctx.destination);
-  osc.start();
-  osc.stop(ctx.currentTime + duration);
-}
+// Sound effect definitions — designed with https://killedbyapixel.github.io/ZzFX/
+// Params: [volume, randomness, frequency, attack, sustain, release, shape, shapeCurve,
+//   slide, deltaSlide, pitchJump, pitchJumpTime, repeatTime, noise, modulation,
+//   bitCrush, delay, sustainVolume, decay, tremolo, filter]
+// prettier-ignore
+const sounds = {
+  correct:       [2,,378,.01,.14,.08,,1.9,-20,-45,,,,,,,.13,.51,.05] as ZzfxParams,
+  wrong:         [1.1,,94,.01,,.26,2,1.2,,,-25,.01,,,0.7,,.22,.96,.06,,-627] as ZzfxParams,
+  timeout:       [.4,,97,.05,.22,.23,5,.8214,,-1,,,,.5,,.2,,.31,.15,,663] as ZzfxParams,
+  bonus:         [1.5,,523,.01,.1,.3,1,1.5,,,880,.05,.1,,,,,.5] as ZzfxParams,
+  gameOver:      [2.1,0,130.8128,.01,.82,.31,2,2.7,,,,,,.4,,,.06,.41,.12] as ZzfxParams,
+  countdown3:    [1,,330,.01,.01,.1,1,1.2,,,,,,,,,,.5] as ZzfxParams,
+  countdown2:    [1,,440,.01,.01,.1,1,1.2,,,,,,,,,,.5] as ZzfxParams,
+  countdown1:    [1,,554,.01,.01,.15,1,1.2,,,,,,,,,,.5] as ZzfxParams,
+  playerJoined:  [.8,,284,.02,.19,.13,1,2.9,21,,,,,,56,,,.68,.3,,486] as ZzfxParams,
+  challenge:     [,,75,.01,.08,.18,3,.7,7,12,,,,.2,,.1,.18,.47,.07,,-1548] as ZzfxParams,
+} as const
 
-export function playCorrectSound() {
-  playTone(523, 0.1, "sine", 0.5);
-  setTimeout(() => playTone(659, 0.1, "sine", 0.5), 80);
-  setTimeout(() => playTone(784, 0.15, "sine", 0.5), 160);
-}
+export type SoundEffect = keyof typeof sounds
 
-export function playWrongSound() {
-  playTone(200, 0.15, "sawtooth", 0.4);
-  setTimeout(() => playTone(150, 0.2, "sawtooth", 0.4), 120);
-}
-
-export function playTimeoutSound() {
-  playTone(440, 0.12, "triangle", 0.4);
-  setTimeout(() => playTone(370, 0.12, "triangle", 0.4), 120);
-  setTimeout(() => playTone(311, 0.25, "triangle", 0.4), 240);
-}
-
-export function playTadaSound() {
-  playTone(523, 0.12, "sine", 0.6);
-  setTimeout(() => playTone(659, 0.12, "sine", 0.6), 100);
-  setTimeout(() => playTone(784, 0.12, "sine", 0.6), 200);
-  setTimeout(() => playTone(1047, 0.3, "sine", 0.6), 300);
-  setTimeout(() => playTone(784, 0.1, "triangle", 0.3), 350);
-  setTimeout(() => playTone(1047, 0.4, "sine", 0.5), 450);
-}
-
-export function playGameOverSound() {
-  const notes = [523, 494, 440, 392, 440, 494, 523];
-  notes.forEach((n, i) =>
-    setTimeout(() => playTone(n, 0.15, "sine", 0.4), i * 120),
-  );
-}
-
-export function playPlayerJoinedSound() {
-  const ctx = getAudioCtx();
-  const osc = ctx.createOscillator();
-  const vol = ctx.createGain();
-  osc.type = "sine";
-  osc.frequency.setValueAtTime(800, ctx.currentTime);
-  osc.frequency.linearRampToValueAtTime(1400, ctx.currentTime + 0.6);
-  vol.gain.setValueAtTime(0.35, ctx.currentTime);
-  vol.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.8);
-  osc.connect(vol);
-  vol.connect(ctx.destination);
-  osc.start();
-  osc.stop(ctx.currentTime + 0.8);
-}
-
-export function playChallengeSound() {
-  playTone(784, 0.1, "sine", 0.4);
-  setTimeout(() => playTone(988, 0.1, "sine", 0.4), 100);
-  setTimeout(() => playTone(784, 0.1, "sine", 0.4), 200);
-  setTimeout(() => playTone(1175, 0.15, "sine", 0.5), 300);
+export function playSound(name: SoundEffect) {
+  zzfxPlay(getAudioCtx(), [...sounds[name]])
 }

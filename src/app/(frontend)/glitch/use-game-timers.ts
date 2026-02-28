@@ -1,6 +1,6 @@
 import { useRef, useEffect } from 'react'
 import type { GameAction } from './game-reducer'
-import { playTone, playTadaSound } from './sound'
+import { playSound, type SoundEffect } from './sound'
 
 export function useGameTimers() {
   const questionTimerRef = useRef<number | null>(null)
@@ -73,7 +73,7 @@ export function useGameTimers() {
         return
       }
       opts.dispatch({ type: 'COUNTDOWN_TICK', value: steps[i] })
-      playTone(440 + (3 - steps[i]) * 100, 0.15, 'sine', 0.4)
+      playSound(`countdown${steps[i]}` as SoundEffect)
       i++
       countdownTimerRef.current = setTimeout(showStep, 1000)
     }
@@ -83,7 +83,7 @@ export function useGameTimers() {
 
   function triggerBonus(dispatch: React.Dispatch<GameAction>) {
     dispatch({ type: 'SHOW_BONUS' })
-    playTadaSound()
+    playSound('bonus')
     bonusTimerRef.current = setTimeout(() => {
       dispatch({ type: 'HIDE_BONUS' })
       bonusTimerRef.current = null

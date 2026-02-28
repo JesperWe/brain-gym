@@ -27,7 +27,7 @@ import { getGameChannelName } from '@/lib/multiplayer/game-channel'
 import { getHistoryChannel, getGameRecords, getLastGame } from '@/lib/multiplayer/game-history'
 import type { PlayerPresenceData, GameInvite, GameInviteResponse } from '@/lib/multiplayer/types'
 
-import { resumeAudio, playPlayerJoinedSound, playChallengeSound } from './glitch/sound'
+import { resumeAudio, playSound } from './glitch/sound'
 import { PlayerCard } from './components/PlayerCard'
 import { InviteDialog } from './components/InviteDialog'
 import { DeniedToast } from './components/DeniedToast'
@@ -165,7 +165,7 @@ export default function HomePage() {
         if (known.size > 0) {
           for (const p of players) {
             if (!known.has(p.playerId) && p.playerId !== me?.playerId) {
-              playPlayerJoinedSound()
+              playSound('playerJoined')
               break
             }
           }
@@ -321,8 +321,8 @@ export default function HomePage() {
   useEffect(() => {
     if (!incomingInvite) return
     resumeAudio()
-    playChallengeSound()
-    const interval = setInterval(playChallengeSound, 3000)
+    playSound('challenge')
+    const interval = setInterval(() => playSound('challenge'), 3000)
     return () => clearInterval(interval)
   }, [incomingInvite])
 
