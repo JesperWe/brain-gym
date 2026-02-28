@@ -19,6 +19,9 @@ export default buildConfig({
     importMap: {
       baseDir: path.resolve(dirname),
     },
+    components: {
+      settingsMenu: ['/components/ClearPlayersButton#ClearPlayersButton'],
+    },
   },
   collections: [Users, Media, Players, Games],
   editor: lexicalEditor(),

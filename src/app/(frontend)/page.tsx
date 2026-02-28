@@ -27,6 +27,7 @@ import { getGameChannelName } from '@/lib/multiplayer/game-channel'
 import { getHistoryChannel, getGameRecords, getLastGame } from '@/lib/multiplayer/game-history'
 import type { PlayerPresenceData, GameInvite, GameInviteResponse } from '@/lib/multiplayer/types'
 
+import { resumeAudio, playPlayerJoinedSound, playChallengeSound } from './glitch/sound'
 import { PlayerCard } from './components/PlayerCard'
 import { InviteDialog } from './components/InviteDialog'
 import { DeniedToast } from './components/DeniedToast'
@@ -79,6 +80,7 @@ export default function HomePage() {
   const ablyChannelRef = useRef<Ably.RealtimeChannel | null>(null)
   const playerRef = useRef<PlayerInfo | null>(null)
   const challengeDurationRef = useRef(1)
+  const knownPlayerIdsRef = useRef<Set<string>>(new Set())
 
   // Keep refs in sync
   useEffect(() => {
@@ -156,6 +158,20 @@ export default function HomePage() {
           if (!d.playerId) d.playerId = m.clientId
           return d
         })
+
+        // Play sound when a new player joins (not on initial load or self)
+        const me = playerRef.current
+        const known = knownPlayerIdsRef.current
+        if (known.size > 0) {
+          for (const p of players) {
+            if (!known.has(p.playerId) && p.playerId !== me?.playerId) {
+              playPlayerJoinedSound()
+              break
+            }
+          }
+        }
+        knownPlayerIdsRef.current = new Set(players.map((p) => p.playerId))
+
         setOnlinePlayers(players)
       })
 
@@ -300,6 +316,15 @@ export default function HomePage() {
     await ablyChannelRef.current.publish('game-event', response)
     setIncomingInvite(null)
   }
+
+  // Play challenge sound on loop while incoming invite is active
+  useEffect(() => {
+    if (!incomingInvite) return
+    resumeAudio()
+    playChallengeSound()
+    const interval = setInterval(playChallengeSound, 3000)
+    return () => clearInterval(interval)
+  }, [incomingInvite])
 
   const selfFirst = [...onlinePlayers].sort((a, b) => {
     if (a.playerId === player?.playerId) return -1

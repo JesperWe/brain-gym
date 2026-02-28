@@ -63,3 +63,15 @@ export function playGameOverSound() {
     setTimeout(() => playTone(n, 0.15, "sine", 0.2), i * 120),
   );
 }
+
+export function playPlayerJoinedSound() {
+  playTone(880, 0.08, "sine", 0.15);
+  setTimeout(() => playTone(1047, 0.12, "sine", 0.15), 70);
+}
+
+export function playChallengeSound() {
+  playTone(784, 0.1, "sine", 0.2);
+  setTimeout(() => playTone(988, 0.1, "sine", 0.2), 100);
+  setTimeout(() => playTone(784, 0.1, "sine", 0.2), 200);
+  setTimeout(() => playTone(1175, 0.15, "sine", 0.25), 300);
+}
