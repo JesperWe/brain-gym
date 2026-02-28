@@ -161,30 +161,29 @@ function GlitchPageInner() {
       })
 
       // Monitor opponent presence — fallback if forfeit message didn't arrive
-      const handlePresenceChange = () => {
-        playersChannel.presence.get().then((members) => {
-          const opponent = members.find((m) => m.clientId !== playerId)
-          if (!opponent) {
-            // Opponent left entirely
-            if (currentScreenRef.current === 'game' || currentScreenRef.current === 'countdown') {
-              clearAllTimers()
-              setForfeitBy({ name: mpOpponentName || 'Opponent', avatar: mpOpponentAvatar || '🤖' })
-              updatePresence(playersChannel, buildPresence()).catch(() => {})
-              setTimeout(() => { window.location.href = '/' }, 2000)
-            }
-            return
-          }
-          const data = opponent.data as PlayerPresenceData
-          if (data.currentGame === null && (currentScreenRef.current === 'game' || currentScreenRef.current === 'countdown')) {
-            clearAllTimers()
-            setForfeitBy({ name: data.name || mpOpponentName || 'Opponent', avatar: data.avatar || mpOpponentAvatar || '🤖' })
-            updatePresence(playersChannel, buildPresence()).catch(() => {})
-            setTimeout(() => { window.location.href = '/' }, 2000)
-          }
-        }).catch(() => {})
+      const handlePresenceLeave = (member: Ably.PresenceMessage) => {
+        // Only react to the opponent leaving, ignore our own or other players
+        if (member.clientId !== mpOpponentId) return
+        if (currentScreenRef.current === 'game' || currentScreenRef.current === 'countdown') {
+          clearAllTimers()
+          setForfeitBy({ name: mpOpponentName || 'Opponent', avatar: mpOpponentAvatar || '🤖' })
+          updatePresence(playersChannel, buildPresence()).catch(() => {})
+          setTimeout(() => { window.location.href = '/' }, 2000)
+        }
       }
-      playersChannel.presence.subscribe('update', handlePresenceChange)
-      playersChannel.presence.subscribe('leave', handlePresenceChange)
+      const handlePresenceUpdate = (member: Ably.PresenceMessage) => {
+        // Only react to the opponent's updates, ignore our own or other players
+        if (member.clientId !== mpOpponentId) return
+        const data = member.data as PlayerPresenceData
+        if (data.currentGame === null && (currentScreenRef.current === 'game' || currentScreenRef.current === 'countdown')) {
+          clearAllTimers()
+          setForfeitBy({ name: data.name || mpOpponentName || 'Opponent', avatar: data.avatar || mpOpponentAvatar || '🤖' })
+          updatePresence(playersChannel, buildPresence()).catch(() => {})
+          setTimeout(() => { window.location.href = '/' }, 2000)
+        }
+      }
+      playersChannel.presence.subscribe('update', handlePresenceUpdate)
+      playersChannel.presence.subscribe('leave', handlePresenceLeave)
 
       // If multiplayer, auto-start countdown
       if (currentScreenRef.current === 'countdown') {
@@ -198,8 +197,8 @@ function GlitchPageInner() {
     return () => {
       if (unsubMessages) unsubMessages()
       if (playersChannelRef.current) {
-        playersChannelRef.current.presence.unsubscribe('update')
-        playersChannelRef.current.presence.unsubscribe('leave')
+        playersChannelRef.current.presence.unsubscribe('update', handlePresenceUpdate)
+        playersChannelRef.current.presence.unsubscribe('leave', handlePresenceLeave)
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
