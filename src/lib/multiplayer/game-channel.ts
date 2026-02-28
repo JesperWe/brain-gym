@@ -2,7 +2,7 @@ import type * as Ably from 'ably'
 import type { GameMessage } from './types'
 
 export function getGameChannelName(name1: string, name2: string): string {
-  return `${name1} - ${name2}`
+  return `game:${name1} - ${name2}`
 }
 
 export function getGameChannel(client: Ably.Realtime, channelName: string): Ably.RealtimeChannel {
