@@ -77,6 +77,9 @@
   --color-glass-15: rgba(255, 255, 255, 0.15);
 
   --font-glitch: 'Segoe UI', system-ui, -apple-system, sans-serif;
+
+  --animate-invite-pulse: invite-pulse 3s ease-in-out infinite;
+  --animate-invite-bounce: invite-bounce 3s ease-in-out infinite;
 }
 
 @layer base {
@@ -86,4 +89,14 @@
   body {
     @apply bg-background text-foreground;
   }
+}
+
+@keyframes invite-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(99, 102, 241, 0); }
+  50% { box-shadow: 0 0 30px 8px rgba(99, 102, 241, 0.5); }
+}
+
+@keyframes invite-bounce {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.15); }
 }

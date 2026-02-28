@@ -22,7 +22,7 @@ export function InviteDialog({ open, fromName, fromAvatar, duration, onAccept, o
   return (
     <Dialog open={open} onOpenChange={() => {}}>
       <DialogContent
-        className="sm:max-w-sm border-glass-15 bg-glitch-bg-dark text-glitch-text"
+        className="sm:max-w-sm border-glass-15 bg-glitch-bg-dark text-glitch-text animate-invite-pulse"
         onInteractOutside={(e) => e.preventDefault()}
       >
         <DialogHeader>
@@ -33,7 +33,7 @@ export function InviteDialog({ open, fromName, fromAvatar, duration, onAccept, o
         </DialogHeader>
 
         <div className="flex flex-col items-center gap-3 py-4">
-          <span className="text-5xl">{fromAvatar}</span>
+          <span className="text-5xl animate-invite-bounce">{fromAvatar}</span>
           <span className="text-xl font-bold text-white">{fromName}</span>
           <span className="text-glitch-label">
             {duration} minute{duration > 1 ? 's' : ''} match

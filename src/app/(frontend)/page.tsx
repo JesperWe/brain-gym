@@ -28,6 +28,7 @@ import { getHistoryChannel, getGameRecords, getLastGame } from '@/lib/multiplaye
 import type { PlayerPresenceData, GameInvite, GameInviteResponse } from '@/lib/multiplayer/types'
 
 import { resumeAudio, playSound } from './glitch/sound'
+import { startFaviconFlash, stopFaviconFlash } from './glitch/favicon-flash'
 import { PlayerCard } from './components/PlayerCard'
 import { InviteDialog } from './components/InviteDialog'
 import { DeniedToast } from './components/DeniedToast'
@@ -320,13 +321,17 @@ export default function HomePage() {
     setIncomingInvite(null)
   }
 
-  // Play challenge sound on loop while incoming invite is active
+  // Alert the user while incoming invite is active: sound loop + favicon flash
   useEffect(() => {
     if (!incomingInvite) return
     resumeAudio()
     playSound('challenge')
+    startFaviconFlash()
     const interval = setInterval(() => playSound('challenge'), 3000)
-    return () => clearInterval(interval)
+    return () => {
+      clearInterval(interval)
+      stopFaviconFlash()
+    }
   }, [incomingInvite])
 
   const selfFirst = [...onlinePlayers].sort((a, b) => {
