@@ -78,9 +78,13 @@ export async function POST(request: Request) {
   const signature = request.headers.get('x-ably-signature')
   const keyHeader = request.headers.get('x-ably-key')
 
+  console.log('[ably-webhook] Received request, body length:', body.length)
+
   if (!verifySignature(body, signature, keyHeader)) {
+    console.log('[ably-webhook] Signature verification FAILED')
     return new Response('Forbidden', { status: 403 })
   }
+  console.log('[ably-webhook] Signature verification OK')
 
   let parsed: { items?: AblyWebhookItem[] }
   try {
@@ -94,6 +98,7 @@ export async function POST(request: Request) {
 
   for (const item of items) {
     try {
+      console.log('[ably-webhook] Item:', JSON.stringify({ source: item.source, channelId: item.data.channelId }))
       if (item.source === 'channel.presence' && item.data.channelId === 'glitch-players') {
         for (const pm of item.data.presence || []) {
           // Actions: 1 = enter, 2 = update (Ably uses numbers in webhooks)
