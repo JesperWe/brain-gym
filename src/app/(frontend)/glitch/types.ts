@@ -16,5 +16,3 @@ export interface Question {
   options: number[];
   isHardQuestion: boolean;
 }
-
-export type GameScreen = "setup" | "countdown" | "game" | "results";
