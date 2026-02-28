@@ -1,7 +1,7 @@
 'use client'
 
 import { Suspense, useState, useEffect, useReducer, useRef } from 'react'
-import { useSearchParams } from 'next/navigation'
+import { useSearchParams, useRouter } from 'next/navigation'
 import type { GameRecord } from './types'
 import type { GameMessage, GameQuestion, GameAnswer, GameForfeit, GameResult, MultiplayerGameRecord, GameInvite, GameInviteResponse } from '@/lib/multiplayer/types'
 import { generateQuestion } from './questions'
@@ -26,6 +26,7 @@ export default function GlitchPage() {
 }
 
 function GlitchPageInner() {
+  const router = useRouter()
   const searchParams = useSearchParams()
   const isMultiplayer = searchParams.get('multiplayer') === 'true'
   const mpChannel = searchParams.get('channel') || ''
@@ -63,6 +64,7 @@ function GlitchPageInner() {
     stateRef,
     dispatch,
     clearAllTimers: timers.clearAllTimers,
+    navigate: router.push,
     onMessage: handleGameMessage,
     onReady: () => {
       resumeAudio()
@@ -277,10 +279,10 @@ function GlitchPageInner() {
         mp.gameChannelRef.current.publish('game-event', forfeit).catch(() => {})
       }
       mp.updateScore({})
-      window.location.href = '/'
+      router.push('/')
       return
     }
-    window.location.href = '/'
+    router.push('/')
   }
 
   function startGame() {
@@ -472,7 +474,7 @@ function GlitchPageInner() {
         opponentScore={state.opponentScore}
         gameHistory={state.gameHistory}
         onPlayAgain={() => dispatch({ type: 'RESET_TO_SETUP' })}
-        onGoHome={() => { window.location.href = '/' }}
+        onGoHome={() => { router.push('/') }}
       />
     )
   }

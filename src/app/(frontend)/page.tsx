@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
+import { useRouter } from 'next/navigation'
 import { Pencil } from 'lucide-react'
 import { Icon } from '@iconify/react'
 import type * as Ably from 'ably'
@@ -62,6 +63,7 @@ function savePlayer(info: PlayerInfo) {
 }
 
 export default function HomePage() {
+  const router = useRouter()
   const [player, setPlayer] = useState<PlayerInfo | null>(null)
   const [dialogOpen, setDialogOpen] = useState(false)
   const [draftName, setDraftName] = useState('')
@@ -193,7 +195,7 @@ export default function HomePage() {
           if (response.accepted) {
             const channelName = getGameChannelName(me.name, response.fromName)
             const duration = challengeDurationRef.current
-            window.location.href = `/glitch?multiplayer=true&channel=${encodeURIComponent(channelName)}&duration=${duration}&role=host&opponentName=${encodeURIComponent(response.fromName)}&opponentAvatar=${encodeURIComponent(response.fromAvatar)}&opponentId=${encodeURIComponent(response.fromPlayerId)}`
+            router.push(`/glitch?multiplayer=true&channel=${encodeURIComponent(channelName)}&duration=${duration}&role=host&opponentName=${encodeURIComponent(response.fromName)}&opponentAvatar=${encodeURIComponent(response.fromAvatar)}&opponentId=${encodeURIComponent(response.fromPlayerId)}`)
           } else {
             setWaitingFor(null)
             setDeniedBy({ name: response.fromName, avatar: response.fromAvatar })
@@ -299,7 +301,7 @@ export default function HomePage() {
     const oppAvatar = incomingInvite.fromAvatar
     const oppId = incomingInvite.fromPlayerId
     setIncomingInvite(null)
-    window.location.href = `/glitch?multiplayer=true&channel=${encodeURIComponent(channelName)}&duration=${duration}&role=guest&opponentName=${encodeURIComponent(oppName)}&opponentAvatar=${encodeURIComponent(oppAvatar)}&opponentId=${encodeURIComponent(oppId)}`
+    router.push(`/glitch?multiplayer=true&channel=${encodeURIComponent(channelName)}&duration=${duration}&role=guest&opponentName=${encodeURIComponent(oppName)}&opponentAvatar=${encodeURIComponent(oppAvatar)}&opponentId=${encodeURIComponent(oppId)}`)
   }
 
   async function handleDenyInvite() {
@@ -408,7 +410,7 @@ export default function HomePage() {
           className="block px-8 py-4 border-none rounded-xl bg-linear-to-br from-glitch-accent-bold to-glitch-accent-purple text-white text-xl font-bold cursor-pointer transition-all hover:translate-y-[-2px] hover:shadow-[0_6px_20px_rgba(99,102,241,0.4)] disabled:opacity-40 disabled:cursor-not-allowed"
           disabled={!player}
           onClick={() => {
-            if (player) window.location.href = '/glitch'
+            if (player) router.push('/glitch')
           }}
         >
           Glitch! (Single player)

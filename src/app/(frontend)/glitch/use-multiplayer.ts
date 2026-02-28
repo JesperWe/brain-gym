@@ -19,6 +19,7 @@ export interface UseMultiplayerOptions {
   stateRef: React.MutableRefObject<GameState>
   dispatch: React.Dispatch<GameAction>
   clearAllTimers: () => void
+  navigate: (path: string) => void
   onMessage: (msg: GameMessage) => void
   onReady: () => void
 }
@@ -72,7 +73,7 @@ export function useMultiplayer(opts: UseMultiplayerOptions): UseMultiplayerRetur
     opts.clearAllTimers()
     opts.dispatch({ type: 'FORFEIT', by })
     updateScore({})
-    setTimeout(() => { window.location.href = '/' }, 2000)
+    setTimeout(() => { opts.navigate('/') }, 2000)
   }
 
   // Channel setup effect
