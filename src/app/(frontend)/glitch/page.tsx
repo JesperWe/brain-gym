@@ -298,6 +298,10 @@ function GlitchPageInner() {
   }
 
   function doNextQuestion() {
+    // In multiplayer, only the host generates questions.
+    // The guest receives them via the 'question' message handler.
+    if (isMultiplayer && mpRole === 'guest') return
+
     const q = generateQuestion()
     const s = stateRef.current
     const idx = s.questionIndex + 1
@@ -305,7 +309,7 @@ function GlitchPageInner() {
     dispatch({ type: 'NEW_QUESTION', question: q, questionIndex: idx })
     timers.startQuestionTimer(onTimeout)
 
-    if (isMultiplayer && mpRole === 'host') {
+    if (isMultiplayer) {
       const gq: GameQuestion = { type: 'question', questionIndex: idx, question: q }
       mp.publish(gq)
     }
