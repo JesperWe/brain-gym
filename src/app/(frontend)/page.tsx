@@ -78,11 +78,15 @@ export default function HomePage() {
 
   const ablyChannelRef = useRef<Ably.RealtimeChannel | null>(null)
   const playerRef = useRef<PlayerInfo | null>(null)
+  const challengeDurationRef = useRef(1)
 
-  // Keep ref in sync
+  // Keep refs in sync
   useEffect(() => {
     playerRef.current = player
   }, [player])
+  useEffect(() => {
+    challengeDurationRef.current = challengeDuration
+  }, [challengeDuration])
 
   // Load player on mount
   useEffect(() => {
@@ -92,6 +96,19 @@ export default function HomePage() {
       setDialogOpen(true)
     }
     setMounted(true)
+  }, [])
+
+  // Reset stale state when page is restored from bfcache (e.g. browser back button)
+  useEffect(() => {
+    function handlePageShow(e: PageTransitionEvent) {
+      if (e.persisted) {
+        setWaitingFor(null)
+        setChallengeTarget(null)
+        setIncomingInvite(null)
+      }
+    }
+    window.addEventListener('pageshow', handlePageShow)
+    return () => window.removeEventListener('pageshow', handlePageShow)
   }, [])
 
   // Connect to Ably when player is set
@@ -160,7 +177,7 @@ export default function HomePage() {
           const response = data as GameInviteResponse
           if (response.accepted) {
             const channelName = getGameChannelName(me.name, response.fromName)
-            const duration = challengeDuration
+            const duration = challengeDurationRef.current
             window.location.href = `/glitch?multiplayer=true&channel=${encodeURIComponent(channelName)}&duration=${duration}&role=host&opponentName=${encodeURIComponent(response.fromName)}&opponentAvatar=${encodeURIComponent(response.fromAvatar)}`
           } else {
             setWaitingFor(null)

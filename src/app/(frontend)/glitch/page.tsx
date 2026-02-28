@@ -3,7 +3,7 @@
 import { Suspense, useState, useEffect, useRef, useCallback } from 'react'
 import { useSearchParams } from 'next/navigation'
 import type { GameRecord, GameScreen, Question } from './types'
-import type { PlayerPresenceData, MultiplayerGameRecord, GameQuestion, GameAnswer, GameEnd, GameMessage } from '@/lib/multiplayer/types'
+import type { PlayerPresenceData, MultiplayerGameRecord, GameQuestion, GameAnswer, GameEnd, GameForfeit, GameMessage } from '@/lib/multiplayer/types'
 import { generateQuestion } from './questions'
 import { Icon } from '@iconify/react'
 import {
@@ -61,6 +61,7 @@ function GlitchPageInner() {
   const [opponentAvatar, setOpponentAvatar] = useState(mpOpponentAvatar)
   const [opponentScore, setOpponentScore] = useState(0)
   const [questionIndex, setQuestionIndex] = useState(0)
+  const [forfeitBy, setForfeitBy] = useState<{ name: string; avatar: string } | null>(null)
 
   const gameEndTimeRef = useRef(0)
   const questionStartTimeRef = useRef(0)
@@ -158,6 +159,32 @@ function GlitchPageInner() {
         handleGameMessage(msg)
       })
 
+      // Monitor opponent presence — fallback if forfeit message didn't arrive
+      const handlePresenceChange = () => {
+        playersChannel.presence.get().then((members) => {
+          const opponent = members.find((m) => m.clientId !== playerId)
+          if (!opponent) {
+            // Opponent left entirely
+            if (currentScreenRef.current === 'game' || currentScreenRef.current === 'countdown') {
+              clearAllTimers()
+              setForfeitBy({ name: mpOpponentName || 'Opponent', avatar: mpOpponentAvatar || '🤖' })
+              updatePresence(playersChannel, buildPresence()).catch(() => {})
+              setTimeout(() => { window.location.href = '/' }, 2000)
+            }
+            return
+          }
+          const data = opponent.data as PlayerPresenceData
+          if (data.currentGame === null && (currentScreenRef.current === 'game' || currentScreenRef.current === 'countdown')) {
+            clearAllTimers()
+            setForfeitBy({ name: data.name || mpOpponentName || 'Opponent', avatar: data.avatar || mpOpponentAvatar || '🤖' })
+            updatePresence(playersChannel, buildPresence()).catch(() => {})
+            setTimeout(() => { window.location.href = '/' }, 2000)
+          }
+        }).catch(() => {})
+      }
+      playersChannel.presence.subscribe('update', handlePresenceChange)
+      playersChannel.presence.subscribe('leave', handlePresenceChange)
+
       // If multiplayer, auto-start countdown
       if (currentScreenRef.current === 'countdown') {
         resumeAudio()
@@ -169,6 +196,10 @@ function GlitchPageInner() {
 
     return () => {
       if (unsubMessages) unsubMessages()
+      if (playersChannelRef.current) {
+        playersChannelRef.current.presence.unsubscribe('update')
+        playersChannelRef.current.presence.unsubscribe('leave')
+      }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isMultiplayer, playerId, mpChannel])
@@ -254,6 +285,23 @@ function GlitchPageInner() {
         endGame()
         break
       }
+      case 'game-forfeit': {
+        const gf = msg as GameForfeit
+        // Only process opponent's forfeit
+        if (gf.playerId !== playerIdRef.current) {
+          clearAllTimers()
+          setForfeitBy({ name: gf.playerName, avatar: gf.playerAvatar })
+          // Update presence to clear game
+          if (playersChannelRef.current) {
+            updatePresence(playersChannelRef.current, buildPresence()).catch(() => {})
+          }
+          // Redirect to home after 2 seconds
+          setTimeout(() => {
+            window.location.href = '/'
+          }, 2000)
+        }
+        break
+      }
     }
   }
 
@@ -315,7 +363,17 @@ function GlitchPageInner() {
   function quitGame() {
     clearAllTimers()
     if (isMultiplayer) {
-      // Leave game channel and update presence
+      // Publish forfeit so opponent is notified
+      if (gameChannelRef.current) {
+        const forfeit: GameForfeit = {
+          type: 'game-forfeit',
+          playerId: playerIdRef.current,
+          playerName,
+          playerAvatar,
+        }
+        gameChannelRef.current.publish('game-event', forfeit).catch(() => {})
+      }
+      // Update presence to clear game
       if (playersChannelRef.current) {
         updatePresence(playersChannelRef.current, buildPresence()).catch(() => {})
       }
@@ -628,6 +686,41 @@ function GlitchPageInner() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [playerName, playerAvatar, gameDuration, isMultiplayer, mpDuration, opponentName, opponentAvatar])
 
+  // Publish forfeit on page unload (back button, tab close, etc.)
+  useEffect(() => {
+    if (!isMultiplayer) return
+
+    function handleBeforeUnload() {
+      // Best-effort: publish forfeit message before leaving
+      if (gameChannelRef.current && currentScreenRef.current !== 'results') {
+        const forfeit: GameForfeit = {
+          type: 'game-forfeit',
+          playerId: playerIdRef.current,
+          playerName,
+          playerAvatar,
+        }
+        // Use publish (fire-and-forget, may not complete)
+        gameChannelRef.current.publish('game-event', forfeit).catch(() => {})
+      }
+      // Update presence to clear game
+      if (playersChannelRef.current) {
+        playersChannelRef.current.presence.update({
+          playerId: playerIdRef.current,
+          name: playerName,
+          avatar: playerAvatar,
+          currentGame: null,
+          currentOpponent: null,
+          currentScore: 0,
+          currentOpponentScore: 0,
+          lastGame: null,
+        }).catch(() => {})
+      }
+    }
+
+    window.addEventListener('beforeunload', handleBeforeUnload)
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload)
+  }, [isMultiplayer, playerName, playerAvatar])
+
   // Cleanup on unmount
   useEffect(() => {
     return () => clearAllTimers()
@@ -712,6 +805,19 @@ function GlitchPageInner() {
               </div>
             </div>
           )}
+        </div>
+      </div>
+    )
+  }
+
+  // ── Forfeit overlay ──
+  if (forfeitBy) {
+    return (
+      <div className="glitch-game">
+        <div className="w-full min-w-[500px] max-w-[520px] px-4 py-6 text-center">
+          <div className="text-6xl mb-4">{forfeitBy.avatar}</div>
+          <h1 className="text-2xl font-bold text-white mb-2">{forfeitBy.name} gave up!</h1>
+          <p className="text-glitch-muted">Returning to home...</p>
         </div>
       </div>
     )

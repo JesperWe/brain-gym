@@ -52,7 +52,14 @@ export interface GameEnd {
   type: 'game-end'
 }
 
-export type GameMessage = GameInvite | GameInviteResponse | GameQuestion | GameAnswer | GameEnd
+export interface GameForfeit {
+  type: 'game-forfeit'
+  playerId: string
+  playerName: string
+  playerAvatar: string
+}
+
+export type GameMessage = GameInvite | GameInviteResponse | GameQuestion | GameAnswer | GameEnd | GameForfeit
 
 export interface MultiplayerGameRecord {
   finishedAt: number
