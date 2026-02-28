@@ -1,7 +1,7 @@
 import { useRef, useEffect } from 'react'
 import type { PlayerPresenceData, GameMessage, GameQuestion, GameAnswer, GameForfeit } from '@/lib/multiplayer/types'
 import { getAblyClient } from '@/lib/multiplayer/ably-client'
-import { updatePresence } from '@/lib/multiplayer/presence'
+import { enterPresence, updatePresence } from '@/lib/multiplayer/presence'
 import { publishMessage, subscribeMessages } from '@/lib/multiplayer/game-channel'
 import type { GameState, GameAction } from './game-reducer'
 import type * as Ably from 'ably'
@@ -88,8 +88,8 @@ export function useMultiplayer(opts: UseMultiplayerOptions): UseMultiplayerRetur
       const playersChannel = client.channels.get('glitch-players')
       playersChannelRef.current = playersChannel
 
-      // Update presence to show we're in a game
-      updatePresence(playersChannel, buildPresence({
+      // Enter presence to show we're in a game (fresh client after page navigation)
+      enterPresence(playersChannel, buildPresence({
         currentGame: opts.mpChannel,
         currentOpponent: opts.mpOpponentName,
         currentScore: 0,

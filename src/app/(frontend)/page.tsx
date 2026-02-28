@@ -19,7 +19,6 @@ import {
 import { getAblyClient, disconnectAbly } from '@/lib/multiplayer/ably-client'
 import {
   enterPresence,
-  leavePresence,
   subscribePresence,
   updatePresence,
 } from '@/lib/multiplayer/presence'
@@ -209,7 +208,9 @@ export default function HomePage() {
       if (unsubPresence) unsubPresence()
       if (channel) {
         channel.unsubscribe('game-event')
-        leavePresence(channel).catch(() => {})
+        // Don't explicitly leave presence — Ably keeps it alive during
+        // page transitions (same clientId reconnects seamlessly).
+        // Presence is auto-removed when the connection truly dies (tab close).
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps

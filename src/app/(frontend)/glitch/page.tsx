@@ -8,7 +8,7 @@ import { generateQuestion } from './questions'
 import { resumeAudio, playSound } from './sound'
 import type * as Ably from 'ably'
 import { getAblyClient } from '@/lib/multiplayer/ably-client'
-import { updatePresence } from '@/lib/multiplayer/presence'
+import { enterPresence } from '@/lib/multiplayer/presence'
 import { getHistoryChannel, saveGameRecord } from '@/lib/multiplayer/game-history'
 import { gameReducer, createInitialState } from './game-reducer'
 import type { GameState } from './game-reducer'
@@ -106,8 +106,8 @@ function GlitchPageInner() {
       const client = getAblyClient(playerId)
       channel = client.channels.get('glitch-players')
 
-      // Mark ourselves as in a solo game
-      updatePresence(channel, {
+      // Mark ourselves as in a solo game (enter, not update — this is a fresh client)
+      enterPresence(channel, {
         playerId,
         name: playerName,
         avatar: playerAvatar,
@@ -136,19 +136,8 @@ function GlitchPageInner() {
 
       return () => {
         channel?.unsubscribe('game-event', handler)
-        // Clear solo marker — home page will re-enter presence fresh
-        if (channel) {
-          updatePresence(channel, {
-            playerId,
-            name: playerName,
-            avatar: playerAvatar,
-            currentGame: null,
-            currentOpponent: null,
-            currentScore: 0,
-            currentOpponentScore: 0,
-            lastGame: null,
-          }).catch(() => {})
-        }
+        // Don't explicitly clear presence — home page will re-enter with fresh data.
+        // Ably keeps presence alive during page transitions (same clientId).
       }
     } catch {}
     // eslint-disable-next-line react-hooks/exhaustive-deps
