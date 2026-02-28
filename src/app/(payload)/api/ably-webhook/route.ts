@@ -101,9 +101,9 @@ export async function POST(request: Request) {
       console.log('[ably-webhook] Item:', JSON.stringify({ source: item.source, channelId: item.data.channelId }))
       if (item.source === 'channel.presence' && item.data.channelId === 'glitch-players') {
         for (const pm of item.data.presence || []) {
-          // Actions: 1 = enter, 2 = update (Ably uses numbers in webhooks)
-          const action = typeof pm.action === 'string' ? pm.action : pm.action
-          if (action === 1 || action === 2 || action === 'enter' || action === 'update') {
+          const action = pm.action
+          console.log(`[ably-webhook] Presence action: ${JSON.stringify(action)} (type: ${typeof action}), clientId: ${pm.clientId}`)
+          if (action === 1 || action === 2 || action === 'enter' || action === 'update' || action === 'present') {
             const data = typeof pm.data === 'string' ? JSON.parse(pm.data) : pm.data
             const name = data?.name || pm.clientId
             const avatar = data?.avatar || '🤖'
