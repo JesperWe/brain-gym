@@ -29,13 +29,14 @@ export function PlayerCard({ player, isSelf, onClick }: PlayerCardProps) {
   }
 
   if (isPlaying) {
+    const isSolo = player.currentGame === 'solo'
     return (
       <div className="player-card player-card-playing">
         <span className="text-2xl">{player.avatar}</span>
         <div className="flex flex-col min-w-0">
           <span className="font-semibold text-white text-sm truncate">{player.name}</span>
           <span className="text-xs text-glitch-muted truncate">
-            vs {player.currentOpponent} — {player.currentScore}:{player.currentOpponentScore}
+            {isSolo ? 'Playing solo' : `vs ${player.currentOpponent} — ${player.currentScore}:${player.currentOpponentScore}`}
           </span>
         </div>
       </div>

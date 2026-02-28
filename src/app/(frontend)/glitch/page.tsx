@@ -3,10 +3,12 @@
 import { Suspense, useState, useEffect, useReducer, useRef } from 'react'
 import { useSearchParams } from 'next/navigation'
 import type { GameRecord } from './types'
-import type { GameMessage, GameQuestion, GameAnswer, GameForfeit, GameResult, MultiplayerGameRecord } from '@/lib/multiplayer/types'
+import type { GameMessage, GameQuestion, GameAnswer, GameForfeit, GameResult, MultiplayerGameRecord, GameInvite, GameInviteResponse } from '@/lib/multiplayer/types'
 import { generateQuestion } from './questions'
 import { resumeAudio, playSound } from './sound'
+import type * as Ably from 'ably'
 import { getAblyClient } from '@/lib/multiplayer/ably-client'
+import { updatePresence } from '@/lib/multiplayer/presence'
 import { getHistoryChannel, saveGameRecord } from '@/lib/multiplayer/game-history'
 import { gameReducer, createInitialState } from './game-reducer'
 import type { GameState } from './game-reducer'
@@ -94,6 +96,63 @@ function GlitchPageInner() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  // Keep presence alive during single-player games so other players can see us
+  useEffect(() => {
+    if (isMultiplayer || !playerId) return
+
+    let channel: Ably.RealtimeChannel | null = null
+    try {
+      const client = getAblyClient(playerId)
+      channel = client.channels.get('glitch-players')
+
+      // Mark ourselves as in a solo game
+      updatePresence(channel, {
+        playerId,
+        name: playerName,
+        avatar: playerAvatar,
+        currentGame: 'solo',
+        currentOpponent: null,
+        currentScore: 0,
+        currentOpponentScore: 0,
+        lastGame: null,
+      }).catch(() => {})
+
+      // Auto-deny any incoming challenges while in solo game
+      const handler = (msg: Ably.InboundMessage) => {
+        const data = msg.data as GameInvite & { toPlayerId?: string }
+        if (data.type !== 'invite' || data.toPlayerId !== playerId) return
+        const deny: GameInviteResponse & { toPlayerId: string } = {
+          type: 'invite-response',
+          accepted: false,
+          fromPlayerId: playerId,
+          fromName: playerName,
+          fromAvatar: playerAvatar,
+          toPlayerId: data.fromPlayerId,
+        }
+        channel?.publish('game-event', deny).catch(() => {})
+      }
+      channel.subscribe('game-event', handler)
+
+      return () => {
+        channel?.unsubscribe('game-event', handler)
+        // Clear solo marker — home page will re-enter presence fresh
+        if (channel) {
+          updatePresence(channel, {
+            playerId,
+            name: playerName,
+            avatar: playerAvatar,
+            currentGame: null,
+            currentOpponent: null,
+            currentScore: 0,
+            currentOpponentScore: 0,
+            lastGame: null,
+          }).catch(() => {})
+        }
+      }
+    } catch {}
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [playerId])
 
   function handleGameMessage(msg: GameMessage) {
     switch (msg.type) {

@@ -43,7 +43,7 @@ describe('Multiplayer - Ably integration', () => {
   })
 
   it('should connect to Ably', async () => {
-    if (!API_KEY) return // Skip if no key
+
 
     const client = createClient('test-player-1')
     clients.push(client)
@@ -52,7 +52,7 @@ describe('Multiplayer - Ably integration', () => {
   })
 
   it('should enter and retrieve presence', async () => {
-    if (!API_KEY) return
+
 
     const client = createClient('test-player-2')
     clients.push(client)
@@ -70,7 +70,7 @@ describe('Multiplayer - Ably integration', () => {
   })
 
   it('should update presence data', async () => {
-    if (!API_KEY) return
+
 
     const client = createClient('test-player-3')
     clients.push(client)
@@ -88,7 +88,7 @@ describe('Multiplayer - Ably integration', () => {
   })
 
   it('should detect presence leave', async () => {
-    if (!API_KEY) return
+
 
     const client = createClient('test-player-4')
     clients.push(client)
@@ -107,7 +107,7 @@ describe('Multiplayer - Ably integration', () => {
   })
 
   it('should publish and receive messages', async () => {
-    if (!API_KEY) return
+
 
     const client = createClient('test-player-5')
     clients.push(client)
@@ -129,7 +129,7 @@ describe('Multiplayer - Ably integration', () => {
   })
 
   it('should simulate game invite flow', async () => {
-    if (!API_KEY) return
+
 
     const host = createClient('host-player')
     const guest = createClient('guest-player')
@@ -184,7 +184,7 @@ describe('Multiplayer - Ably integration', () => {
   })
 
   it('should see each other in presence with two clients', async () => {
-    if (!API_KEY) return
+
 
     const client1 = createClient('two-player-1')
     const client2 = createClient('two-player-2')
@@ -214,7 +214,7 @@ describe('Multiplayer - Ably integration', () => {
   })
 
   it('should preserve playerId in presence after update (regression: partial update wipes fields)', async () => {
-    if (!API_KEY) return
+
 
     const client = createClient('update-regression-1')
     clients.push(client)
@@ -253,7 +253,7 @@ describe('Multiplayer - Ably integration', () => {
   })
 
   it('should include toPlayerId in invite so receiver can filter (regression: missing toPlayerId)', async () => {
-    if (!API_KEY) return
+
 
     const host = createClient('invite-reg-host')
     const guest = createClient('invite-reg-guest')
@@ -288,7 +288,7 @@ describe('Multiplayer - Ably integration', () => {
   })
 
   it('should deliver invite-response before sender disconnects (regression: publish must be awaited)', async () => {
-    if (!API_KEY) return
+
 
     const host = createClient('await-reg-host')
     const guest = createClient('await-reg-guest')
@@ -323,7 +323,7 @@ describe('Multiplayer - Ably integration', () => {
   })
 
   it('should include points in game answer for correct bonus tracking (regression: bonus score mismatch)', async () => {
-    if (!API_KEY) return
+
 
     const host = createClient('bonus-reg-host')
     const guest = createClient('bonus-reg-guest')
@@ -363,7 +363,7 @@ describe('Multiplayer - Ably integration', () => {
   })
 
   it('should deliver lockout answer so both sides advance (regression: freeze after correct answer)', async () => {
-    if (!API_KEY) return
+
 
     const host = createClient('lockout-reg-host')
     const guest = createClient('lockout-reg-guest')
@@ -417,6 +417,71 @@ describe('Multiplayer - Ably integration', () => {
     hostCh.unsubscribe('game-event')
     guestCh.unsubscribe('game-event')
   })
+
+  it('should auto-deny invite when player is in a solo game', async () => {
+
+
+    const soloPlayer = createClient('solo-player')
+    const challenger = createClient('challenger')
+    clients.push(soloPlayer, challenger)
+    await Promise.all([waitForConnection(soloPlayer), waitForConnection(challenger)])
+
+    const soloCh = soloPlayer.channels.get(TEST_CHANNEL + '-solo')
+    const challengerCh = challenger.channels.get(TEST_CHANNEL + '-solo')
+
+    // Solo player enters presence with currentGame: 'solo'
+    await soloCh.presence.enter({
+      playerId: 'solo-player',
+      name: 'SoloPlayer',
+      avatar: '🦊',
+      currentGame: 'solo',
+    })
+
+    // Solo player auto-denies incoming invites (mirrors glitch/page.tsx logic)
+    soloCh.subscribe('game-event', (msg) => {
+      const data = msg.data as { type: string; toPlayerId?: string; fromPlayerId?: string }
+      if (data.type !== 'invite' || data.toPlayerId !== 'solo-player') return
+      soloCh.publish('game-event', {
+        type: 'invite-response',
+        accepted: false,
+        fromPlayerId: 'solo-player',
+        fromName: 'SoloPlayer',
+        fromAvatar: '🦊',
+        toPlayerId: data.fromPlayerId,
+      }).catch(() => {})
+    })
+
+    // Challenger sends invite and waits for response
+    const responseReceived = new Promise<Ably.Message>((resolve) => {
+      challengerCh.subscribe('game-event', (msg) => {
+        if (msg.data.type === 'invite-response') resolve(msg)
+      })
+    })
+
+    await challengerCh.publish('game-event', {
+      type: 'invite',
+      fromPlayerId: 'challenger',
+      fromName: 'Challenger',
+      fromAvatar: '🐱',
+      duration: 1,
+      toPlayerId: 'solo-player',
+    })
+
+    const response = await responseReceived
+    expect(response.data.accepted).toBe(false)
+    expect(response.data.fromPlayerId).toBe('solo-player')
+    expect(response.data.toPlayerId).toBe('challenger')
+
+    // Verify presence shows currentGame: 'solo' (not challengeable in UI)
+    const members = await challengerCh.presence.get()
+    const solo = members.find((m) => m.clientId === 'solo-player')
+    expect(solo).toBeDefined()
+    expect(solo!.data.currentGame).toBe('solo')
+
+    soloCh.unsubscribe('game-event')
+    challengerCh.unsubscribe('game-event')
+    await soloCh.presence.leave()
+  })
 })
 
 describe('Game History - getLastGame (unit)', () => {
@@ -468,7 +533,7 @@ describe('Game History - LiveObjects integration', () => {
   })
 
   it('should save and retrieve a game record via LiveMap', async () => {
-    if (!API_KEY) return
+
 
     const client = createLiveObjectsClient('history-test-1')
     clients.push(client)
@@ -505,7 +570,7 @@ describe('Game History - LiveObjects integration', () => {
   })
 
   it('should append a second game record without losing the first', async () => {
-    if (!API_KEY) return
+
 
     const client = createLiveObjectsClient('history-test-2')
     clients.push(client)
@@ -560,7 +625,7 @@ describe('Game History - LiveObjects integration', () => {
   })
 
   it('should return empty array for a player with no game history', async () => {
-    if (!API_KEY) return
+
 
     const client = createLiveObjectsClient('history-test-3')
     clients.push(client)
@@ -579,7 +644,7 @@ describe('Game History - LiveObjects integration', () => {
   })
 
   it('should keep separate history per player', async () => {
-    if (!API_KEY) return
+
 
     const client = createLiveObjectsClient('history-test-4')
     clients.push(client)
@@ -628,7 +693,7 @@ describe('Game History - LiveObjects integration', () => {
   })
 
   it('should be visible from a second client on the same channel', async () => {
-    if (!API_KEY) return
+
 
     const writer = createLiveObjectsClient('history-writer')
     const reader = createLiveObjectsClient('history-reader')
