@@ -8,3 +8,68 @@ img {
   height: auto;
   display: block;
 }
+
+/* ── Player cards (home page) ── */
+.player-card {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border-radius: var(--radius-xl);
+  border: 1px solid var(--color-glass-10);
+  background: var(--color-glass-8);
+  transition: all 0.15s;
+}
+
+.player-card-self {
+  opacity: 0.6;
+}
+
+.player-card-playing {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.player-card-available {
+  cursor: pointer;
+  width: 100%;
+  text-align: left;
+  font-family: inherit;
+  font-size: inherit;
+  color: inherit;
+}
+
+.player-card-available:hover {
+  background: var(--color-glass-15);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.2);
+}
+
+/* ── Denied toast ── */
+.denied-toast {
+  position: fixed;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 20px;
+  background: rgba(248, 113, 113, 0.15);
+  border: 1px solid rgba(248, 113, 113, 0.3);
+  border-radius: var(--radius-xl);
+  backdrop-filter: blur(8px);
+  z-index: 200;
+  animation: denied-slide-in 0.3s ease-out;
+}
+
+@keyframes denied-slide-in {
+  from {
+    transform: translateX(-50%) translateY(-20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(-50%) translateY(0);
+    opacity: 1;
+  }
+}

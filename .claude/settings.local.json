@@ -6,7 +6,12 @@
       "Bash(python3 -c \":*)",
       "Bash(python3:*)",
       "Bash(pnpm add @radix-ui/react-slot)",
-      "Bash(pnpm add @radix-ui/react-dialog)"
+      "Bash(pnpm add @radix-ui/react-dialog)",
+      "WebFetch(domain:ably.com)",
+      "Bash(ls:*)",
+      "Bash(cat:*)",
+      "Bash(pnpm add:*)",
+      "Bash(npx next:*)"
     ]
   }
 }

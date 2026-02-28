@@ -1,7 +1,9 @@
 'use client'
 
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { Suspense, useState, useEffect, useRef, useCallback } from 'react'
+import { useSearchParams } from 'next/navigation'
 import type { GameRecord, GameScreen, Question } from './types'
+import type { PlayerPresenceData, MultiplayerGameRecord, GameQuestion, GameAnswer, GameEnd, GameMessage } from '@/lib/multiplayer/types'
 import { generateQuestion } from './questions'
 import { Icon } from '@iconify/react'
 import {
@@ -13,13 +15,35 @@ import {
   playTadaSound,
   playGameOverSound,
 } from './sound'
+import { getAblyClient } from '@/lib/multiplayer/ably-client'
+import { updatePresence } from '@/lib/multiplayer/presence'
+import { publishMessage, subscribeMessages } from '@/lib/multiplayer/game-channel'
+import { getHistoryChannel, saveGameRecord } from '@/lib/multiplayer/game-history'
+import type * as Ably from 'ably'
 import './glitch.css'
 
 export default function GlitchPage() {
+  return (
+    <Suspense fallback={null}>
+      <GlitchPageInner />
+    </Suspense>
+  )
+}
+
+function GlitchPageInner() {
+  const searchParams = useSearchParams()
+  const isMultiplayer = searchParams.get('multiplayer') === 'true'
+  const mpChannel = searchParams.get('channel') || ''
+  const mpDuration = parseInt(searchParams.get('duration') || '1', 10)
+  const mpRole = searchParams.get('role') as 'host' | 'guest' | null
+  const mpOpponentName = searchParams.get('opponentName') || ''
+  const mpOpponentAvatar = searchParams.get('opponentAvatar') || ''
+
   const [playerName, setPlayerName] = useState('')
   const [playerAvatar, setPlayerAvatar] = useState('🦊')
-  const [gameDuration, setGameDuration] = useState(1)
-  const [currentScreen, setCurrentScreen] = useState<GameScreen>('setup')
+  const [playerId, setPlayerId] = useState('')
+  const [gameDuration, setGameDuration] = useState(isMultiplayer ? mpDuration : 1)
+  const [currentScreen, setCurrentScreen] = useState<GameScreen>(isMultiplayer ? 'countdown' : 'setup')
   const [gameHistory, setGameHistory] = useState<GameRecord[]>([])
 
   const [currentQuestion, setCurrentQuestion] = useState<Question | null>(null)
@@ -29,10 +53,14 @@ export default function GlitchPage() {
   const [showBonus, setShowBonus] = useState(false)
   const [countdownValue, setCountdownValue] = useState(3)
   const [timeDisplay, setTimeDisplay] = useState('')
-  const [buttonStates, setButtonStates] = useState<Record<number, 'correct' | 'wrong' | undefined>>(
-    {},
-  )
+  const [buttonStates, setButtonStates] = useState<Record<number, 'correct' | 'wrong' | 'opponent-wrong' | undefined>>({})
   const [buttonsDisabled, setButtonsDisabled] = useState(false)
+
+  // Multiplayer state
+  const [opponentName, setOpponentName] = useState(mpOpponentName)
+  const [opponentAvatar, setOpponentAvatar] = useState(mpOpponentAvatar)
+  const [opponentScore, setOpponentScore] = useState(0)
+  const [questionIndex, setQuestionIndex] = useState(0)
 
   const gameEndTimeRef = useRef(0)
   const questionStartTimeRef = useRef(0)
@@ -46,28 +74,42 @@ export default function GlitchPage() {
   const correctCountRef = useRef(0)
   const totalCountRef = useRef(0)
   const currentQuestionRef = useRef<Question | null>(null)
-  const currentScreenRef = useRef<GameScreen>('setup')
+  const currentScreenRef = useRef<GameScreen>(isMultiplayer ? 'countdown' : 'setup')
   const gameHistoryRef = useRef<GameRecord[]>([])
 
+  // Multiplayer refs
+  const gameChannelRef = useRef<Ably.RealtimeChannel | null>(null)
+  const playersChannelRef = useRef<Ably.RealtimeChannel | null>(null)
+  const playerIdRef = useRef('')
+  const opponentScoreRef = useRef(0)
+  const questionIndexRef = useRef(0)
+  const opponentAnsweredRef = useRef(false)
+  const myAnsweredRef = useRef(false)
+
+  // Build full presence data object (Ably replaces entirely on update)
+  function buildPresence(overrides: Partial<PlayerPresenceData> = {}): PlayerPresenceData {
+    return {
+      playerId: playerIdRef.current,
+      name: playerName,
+      avatar: playerAvatar,
+      currentGame: null,
+      currentOpponent: null,
+      currentScore: correctCountRef.current,
+      currentOpponentScore: opponentScoreRef.current,
+      lastGame: null,
+      ...overrides,
+    }
+  }
+
   // Sync refs with state
-  useEffect(() => {
-    questionAnsweredRef.current = questionAnswered
-  }, [questionAnswered])
-  useEffect(() => {
-    correctCountRef.current = correctCount
-  }, [correctCount])
-  useEffect(() => {
-    totalCountRef.current = totalCount
-  }, [totalCount])
-  useEffect(() => {
-    currentQuestionRef.current = currentQuestion
-  }, [currentQuestion])
-  useEffect(() => {
-    currentScreenRef.current = currentScreen
-  }, [currentScreen])
-  useEffect(() => {
-    gameHistoryRef.current = gameHistory
-  }, [gameHistory])
+  useEffect(() => { questionAnsweredRef.current = questionAnswered }, [questionAnswered])
+  useEffect(() => { correctCountRef.current = correctCount }, [correctCount])
+  useEffect(() => { totalCountRef.current = totalCount }, [totalCount])
+  useEffect(() => { currentQuestionRef.current = currentQuestion }, [currentQuestion])
+  useEffect(() => { currentScreenRef.current = currentScreen }, [currentScreen])
+  useEffect(() => { gameHistoryRef.current = gameHistory }, [gameHistory])
+  useEffect(() => { opponentScoreRef.current = opponentScore }, [opponentScore])
+  useEffect(() => { questionIndexRef.current = questionIndex }, [questionIndex])
 
   // Load player info and history from localStorage on mount
   useEffect(() => {
@@ -77,6 +119,10 @@ export default function GlitchPage() {
         const parsed = JSON.parse(player)
         if (parsed.name) setPlayerName(parsed.name)
         if (parsed.avatar) setPlayerAvatar(parsed.avatar)
+        if (parsed.playerId) {
+          setPlayerId(parsed.playerId)
+          playerIdRef.current = parsed.playerId
+        }
       }
     } catch {}
     const stored = localStorage.getItem('mathsHistory')
@@ -86,6 +132,137 @@ export default function GlitchPage() {
       gameHistoryRef.current = parsed
     }
   }, [])
+
+  // Setup multiplayer channel
+  useEffect(() => {
+    if (!isMultiplayer || !playerId || !mpChannel) return
+
+    let unsubMessages: (() => void) | null = null
+
+    try {
+      const client = getAblyClient(playerId)
+      const channel = client.channels.get(mpChannel)
+      gameChannelRef.current = channel
+      const playersChannel = client.channels.get('glitch-players')
+      playersChannelRef.current = playersChannel
+
+      // Update presence to show we're in a game
+      updatePresence(playersChannel, buildPresence({
+        currentGame: mpChannel,
+        currentOpponent: mpOpponentName,
+        currentScore: 0,
+        currentOpponentScore: 0,
+      })).catch(() => {})
+
+      unsubMessages = subscribeMessages(channel, (msg) => {
+        handleGameMessage(msg)
+      })
+
+      // If multiplayer, auto-start countdown
+      if (currentScreenRef.current === 'countdown') {
+        resumeAudio()
+        showCountdown()
+      }
+    } catch {
+      // Ably not available
+    }
+
+    return () => {
+      if (unsubMessages) unsubMessages()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isMultiplayer, playerId, mpChannel])
+
+  function handleGameMessage(msg: GameMessage) {
+    switch (msg.type) {
+      case 'question': {
+        const gq = msg as GameQuestion
+        // Only guest receives questions from host
+        if (mpRole === 'guest') {
+          setCurrentQuestion(gq.question)
+          currentQuestionRef.current = gq.question
+          setQuestionIndex(gq.questionIndex)
+          questionIndexRef.current = gq.questionIndex
+          setQuestionAnswered(false)
+          questionAnsweredRef.current = false
+          myAnsweredRef.current = false
+          opponentAnsweredRef.current = false
+          setButtonStates({})
+          setButtonsDisabled(false)
+          questionStartTimeRef.current = Date.now()
+          startQuestionTimerImmediate()
+        }
+        break
+      }
+      case 'answer': {
+        const ga = msg as GameAnswer
+        // Only process opponent's answers
+        if (ga.playerId !== playerIdRef.current) {
+          opponentAnsweredRef.current = true
+          if (ga.isCorrect) {
+            // Opponent got it right
+            const newOpScore = opponentScoreRef.current + (ga.points || 1)
+            opponentScoreRef.current = newOpScore
+            setOpponentScore(newOpScore)
+
+            // If we haven't answered yet, opponent beat us
+            if (!myAnsweredRef.current) {
+              setButtonStates((prev) => ({ ...prev, [ga.selectedValue]: 'correct' }))
+              setButtonsDisabled(true)
+              questionAnsweredRef.current = true
+              myAnsweredRef.current = true
+              setQuestionAnswered(true)
+              const newTotal = totalCountRef.current + 1
+              totalCountRef.current = newTotal
+              setTotalCount(newTotal)
+              if (questionTimerRef.current) cancelAnimationFrame(questionTimerRef.current)
+
+              // Tell opponent we're done (locked out)
+              if (gameChannelRef.current) {
+                publishMessage(gameChannelRef.current, {
+                  type: 'answer',
+                  playerId: playerIdRef.current,
+                  questionIndex: questionIndexRef.current,
+                  selectedValue: -1,
+                  isCorrect: false,
+                  points: 0,
+                  timestamp: Date.now(),
+                })
+              }
+            }
+          } else {
+            // Opponent answered wrong — show their wrong answer on our grid
+            if (ga.selectedValue >= 0) {
+              setButtonStates((prev) => ({ ...prev, [ga.selectedValue]: 'opponent-wrong' }))
+            }
+          }
+
+          // Both done — advance
+          maybeAdvance()
+
+          // Update presence with opponent score
+          if (playersChannelRef.current) {
+            updatePresence(playersChannelRef.current, buildPresence({
+              currentGame: mpChannel,
+              currentOpponentScore: opponentScoreRef.current,
+            })).catch(() => {})
+          }
+        }
+        break
+      }
+      case 'game-end': {
+        endGame()
+        break
+      }
+    }
+  }
+
+  function maybeAdvance() {
+    // Both answered — advance to next question (host only publishes)
+    if (myAnsweredRef.current && opponentAnsweredRef.current) {
+      scheduleNext(1500)
+    }
+  }
 
   // Escape key handler
   useEffect(() => {
@@ -137,6 +314,14 @@ export default function GlitchPage() {
 
   function quitGame() {
     clearAllTimers()
+    if (isMultiplayer) {
+      // Leave game channel and update presence
+      if (playersChannelRef.current) {
+        updatePresence(playersChannelRef.current, buildPresence()).catch(() => {})
+      }
+      window.location.href = '/'
+      return
+    }
     setCurrentScreen('setup')
     setShowBonus(false)
   }
@@ -160,9 +345,24 @@ export default function GlitchPage() {
     function showStep() {
       if (i >= steps.length) {
         countdownTimerRef.current = null
-        // Start the actual game
-        gameEndTimeRef.current = Date.now() + gameDuration * 60 * 1000
+        const duration = isMultiplayer ? mpDuration : gameDuration
+        gameEndTimeRef.current = Date.now() + duration * 60 * 1000
         setCurrentScreen('game')
+
+        // Set game end timer
+        if (isMultiplayer && mpRole === 'host') {
+          const gameTimer = setTimeout(() => {
+            // Publish game-end
+            if (gameChannelRef.current) {
+              publishMessage(gameChannelRef.current, { type: 'game-end' })
+            }
+            endGame()
+          }, duration * 60 * 1000)
+          gameTimerRef.current = gameTimer
+        } else if (!isMultiplayer) {
+          // Single player doesn't need a separate game end timer - handled by scheduleNext
+        }
+
         doNextQuestion()
         return
       }
@@ -177,15 +377,30 @@ export default function GlitchPage() {
 
   function doNextQuestion() {
     const q = generateQuestion()
+    const idx = questionIndexRef.current + 1
+    questionIndexRef.current = idx
+    setQuestionIndex(idx)
+
     setCurrentQuestion(q)
     currentQuestionRef.current = q
     setQuestionAnswered(false)
     questionAnsweredRef.current = false
+    myAnsweredRef.current = false
+    opponentAnsweredRef.current = false
     setButtonStates({})
     setButtonsDisabled(false)
     questionStartTimeRef.current = Date.now()
-    // Timer will be started via effect after render
     startQuestionTimerImmediate()
+
+    // If host in multiplayer, publish question
+    if (isMultiplayer && mpRole === 'host' && gameChannelRef.current) {
+      const gq: GameQuestion = {
+        type: 'question',
+        questionIndex: idx,
+        question: q,
+      }
+      publishMessage(gameChannelRef.current, gq)
+    }
   }
 
   function startQuestionTimerImmediate() {
@@ -197,7 +412,6 @@ export default function GlitchPage() {
     function tick() {
       const bar = timerBarRef.current
       if (!bar) {
-        // Bar not mounted yet, retry
         questionTimerRef.current = requestAnimationFrame(tick)
         return
       }
@@ -223,23 +437,47 @@ export default function GlitchPage() {
   function onTimeout() {
     if (questionAnsweredRef.current) return
     questionAnsweredRef.current = true
+    myAnsweredRef.current = true
     setQuestionAnswered(true)
     const newTotal = totalCountRef.current + 1
     totalCountRef.current = newTotal
     setTotalCount(newTotal)
     playTimeoutSound()
-    // Highlight correct answer
     const q = currentQuestionRef.current!
-    const states: Record<number, 'correct' | 'wrong' | undefined> = {}
+    const states: Record<number, 'correct' | 'wrong' | 'opponent-wrong' | undefined> = {}
     states[q.answer] = 'correct'
-    setButtonStates(states)
+    setButtonStates((prev) => ({ ...prev, ...states }))
     setButtonsDisabled(true)
-    scheduleNext(3000)
+
+    if (isMultiplayer && gameChannelRef.current) {
+      // Publish that we timed out (wrong answer)
+      const ga: GameAnswer = {
+        type: 'answer',
+        playerId: playerIdRef.current,
+        questionIndex: questionIndexRef.current,
+        selectedValue: -1,
+        isCorrect: false,
+        points: 0,
+        timestamp: Date.now(),
+      }
+      publishMessage(gameChannelRef.current, ga)
+    }
+
+    if (isMultiplayer) {
+      maybeAdvance()
+      // If opponent hasn't answered yet, wait for them
+      if (!opponentAnsweredRef.current) {
+        // They'll trigger advance when they answer
+      }
+    } else {
+      scheduleNext(3000)
+    }
   }
 
   function onAnswer(value: number) {
     if (questionAnsweredRef.current) return
     questionAnsweredRef.current = true
+    myAnsweredRef.current = true
     setQuestionAnswered(true)
     if (questionTimerRef.current) cancelAnimationFrame(questionTimerRef.current)
 
@@ -248,12 +486,16 @@ export default function GlitchPage() {
     setTotalCount(newTotal)
 
     const q = currentQuestionRef.current!
-    const states: Record<number, 'correct' | 'wrong' | undefined> = {}
+    const states: Record<number, 'correct' | 'wrong' | 'opponent-wrong' | undefined> = {}
+
+    let isCorrect = false
+    let points = 0
 
     if (value === q.answer) {
+      isCorrect = true
       const elapsed = Date.now() - questionStartTimeRef.current
       const isBonus = q.isHardQuestion && elapsed < 3000
-      const points = isBonus ? 2 : 1
+      points = isBonus ? 2 : 1
       const newCorrect = correctCountRef.current + points
       correctCountRef.current = newCorrect
       setCorrectCount(newCorrect)
@@ -269,9 +511,34 @@ export default function GlitchPage() {
       states[q.answer] = 'correct'
     }
 
-    setButtonStates(states)
+    setButtonStates((prev) => ({ ...prev, ...states }))
     setButtonsDisabled(true)
-    scheduleNext(value === q.answer ? 1500 : 3000)
+
+    // Publish answer in multiplayer
+    if (isMultiplayer && gameChannelRef.current) {
+      const ga: GameAnswer = {
+        type: 'answer',
+        playerId: playerIdRef.current,
+        questionIndex: questionIndexRef.current,
+        selectedValue: value,
+        isCorrect,
+        points,
+        timestamp: Date.now(),
+      }
+      publishMessage(gameChannelRef.current, ga)
+
+      // Update presence with score
+      if (playersChannelRef.current) {
+        updatePresence(playersChannelRef.current, buildPresence({
+          currentGame: mpChannel,
+          currentScore: correctCountRef.current,
+        })).catch(() => {})
+      }
+
+      maybeAdvance()
+    } else {
+      scheduleNext(value === q.answer ? 1500 : 3000)
+    }
   }
 
   function triggerBonus() {
@@ -284,14 +551,26 @@ export default function GlitchPage() {
   }
 
   function scheduleNext(delay = 3000) {
-    if (gameTimerRef.current) clearTimeout(gameTimerRef.current)
-    gameTimerRef.current = setTimeout(() => {
+    if (gameTimerRef.current && !isMultiplayer) clearTimeout(gameTimerRef.current)
+
+    const timer = setTimeout(() => {
       if (Date.now() >= gameEndTimeRef.current) {
+        if (isMultiplayer && mpRole === 'host' && gameChannelRef.current) {
+          publishMessage(gameChannelRef.current, { type: 'game-end' })
+        }
         endGame()
-      } else {
+      } else if (isMultiplayer && mpRole === 'host') {
+        doNextQuestion()
+      } else if (!isMultiplayer) {
         doNextQuestion()
       }
+      // Guest waits for host to publish next question
     }, delay)
+
+    if (!isMultiplayer) {
+      if (gameTimerRef.current) clearTimeout(gameTimerRef.current)
+      gameTimerRef.current = timer
+    }
   }
 
   const endGame = useCallback(() => {
@@ -305,7 +584,7 @@ export default function GlitchPage() {
       name: playerName,
       avatar: playerAvatar,
       date: new Date().toLocaleString(),
-      duration: gameDuration,
+      duration: isMultiplayer ? mpDuration : gameDuration,
       correct,
       total,
       percent,
@@ -315,8 +594,39 @@ export default function GlitchPage() {
     setGameHistory(newHistory)
     localStorage.setItem('mathsHistory', JSON.stringify(newHistory))
 
+    // Save multiplayer record to LiveMap
+    if (isMultiplayer) {
+      const mpRecord: MultiplayerGameRecord = {
+        finishedAt: Date.now(),
+        opponent: opponentName || 'Opponent',
+        opponentAvatar: opponentAvatar || '🤖',
+        opponentId: '',
+        score: correct,
+        opponentScore: opponentScoreRef.current,
+      }
+
+      try {
+        const client = getAblyClient(playerIdRef.current)
+        const historyChannel = getHistoryChannel(client)
+        saveGameRecord(historyChannel, playerIdRef.current, mpRecord).catch(() => {})
+      } catch {}
+
+      // Update presence with lastGame
+      if (playersChannelRef.current) {
+        updatePresence(playersChannelRef.current, buildPresence({
+          lastGame: {
+            opponent: mpRecord.opponent,
+            score: mpRecord.score,
+            opponentScore: mpRecord.opponentScore,
+            won: mpRecord.score > mpRecord.opponentScore,
+          },
+        })).catch(() => {})
+      }
+    }
+
     setCurrentScreen('results')
-  }, [playerName, playerAvatar, gameDuration])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [playerName, playerAvatar, gameDuration, isMultiplayer, mpDuration, opponentName, opponentAvatar])
 
   // Cleanup on unmount
   useEffect(() => {
@@ -424,6 +734,48 @@ export default function GlitchPage() {
   // ── Results Screen ──
   if (currentScreen === 'results') {
     const latest = gameHistory[gameHistory.length - 1]
+
+    if (isMultiplayer) {
+      const myScore = correctCountRef.current
+      const oppScore = opponentScoreRef.current
+      const won = myScore > oppScore
+      const tied = myScore === oppScore
+      const resultEmoji = won ? '🏆' : tied ? '🤝' : '💪'
+
+      return (
+        <div className="glitch-game">
+          <div className="w-full min-w-[500px] max-w-[520px] px-4 py-6">
+            <h1 className="text-center text-3xl font-bold mb-6 text-white">
+              {resultEmoji} {won ? 'You Win!' : tied ? 'It\'s a Tie!' : 'Game Over!'}
+            </h1>
+
+            <div className="mp-results-container">
+              <div className="mp-result-card">
+                <div className="text-4xl mb-2">{playerAvatar}</div>
+                <div className="text-lg font-semibold text-white mb-1">{playerName}</div>
+                <div className="text-4xl font-extrabold text-glitch-accent">{myScore}</div>
+              </div>
+
+              <div className="mp-vs-divider">VS</div>
+
+              <div className="mp-result-card">
+                <div className="text-4xl mb-2">{opponentAvatar || '🤖'}</div>
+                <div className="text-lg font-semibold text-white mb-1">{opponentName || 'Opponent'}</div>
+                <div className="text-4xl font-extrabold text-glitch-accent">{oppScore}</div>
+              </div>
+            </div>
+
+            <button
+              className="btn-start block w-full p-4 border-none rounded-xl bg-linear-to-br from-glitch-accent-bold to-glitch-accent-purple text-white text-xl font-bold cursor-pointer transition-all mb-4 mt-6"
+              onClick={() => { window.location.href = '/' }}
+            >
+              Back to Home
+            </button>
+          </div>
+        </div>
+      )
+    }
+
     let emoji: string
     if (latest.percent >= 90) emoji = '🏆'
     else if (latest.percent >= 70) emoji = '⭐'
@@ -452,6 +804,13 @@ export default function GlitchPage() {
             onClick={() => setCurrentScreen('setup')}
           >
             Play Again!
+          </button>
+
+          <button
+            className="block w-full p-3 border-2 border-glass-15 rounded-xl bg-transparent text-glitch-text text-base font-semibold cursor-pointer transition-all mb-4 hover:bg-glass-12"
+            onClick={() => { window.location.href = '/' }}
+          >
+            Return to Home
           </button>
 
           {gameHistory.length > 0 && (
@@ -510,6 +869,9 @@ export default function GlitchPage() {
           <div className="flex gap-4 items-center">
             <span className="font-bold text-lg text-glitch-label">
               {correctCount}/{totalCount}
+              {isMultiplayer && (
+                <span className="text-glitch-muted ml-2">vs {opponentScore}</span>
+              )}
             </span>
             <span className="font-bold text-lg text-glitch-warning">{timeDisplay}</span>
           </div>
