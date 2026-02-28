@@ -8,13 +8,13 @@ function verifySignature(body: string, signature: string | null, keyHeader: stri
   const apiKey = process.env.ABLY_API_KEY
   if (!apiKey) return false
 
-  // ABLY_API_KEY format is "keyId:keySecret"
-  // X-Ably-Key header contains the keyId (or "keyId" portion)
-  const [keyId, keySecret] = apiKey.split(':')
-  if (!keyId || !keySecret) return false
+  // ABLY_API_KEY format is "appId.keyId:keySecret"
+  // X-Ably-Key header contains just the keyId (without appId prefix)
+  const [keyName, keySecret] = apiKey.split(':')
+  if (!keyName || !keySecret) return false
 
-  // Verify the key header matches our key
-  if (keyHeader !== keyId) return false
+  // Verify the key header matches our key (header may be just keyId or full appId.keyId)
+  if (keyHeader !== keyName && !keyName.endsWith(`.${keyHeader}`)) return false
 
   const computed = createHmac('sha256', keySecret).update(body).digest('base64')
 
@@ -78,18 +78,9 @@ export async function POST(request: Request) {
   const signature = request.headers.get('x-ably-signature')
   const keyHeader = request.headers.get('x-ably-key')
 
-  const apiKey = process.env.ABLY_API_KEY || ''
-  const [expectedKeyId] = apiKey.split(':')
-  console.log('[ably-webhook] X-Ably-Key header:', keyHeader)
-  console.log('[ably-webhook] Expected keyId:', expectedKeyId)
-  console.log('[ably-webhook] X-Ably-Signature present:', !!signature)
-  console.log('[ably-webhook] Body length:', body.length)
-
   if (!verifySignature(body, signature, keyHeader)) {
-    console.log('[ably-webhook] Signature verification FAILED')
     return new Response('Forbidden', { status: 403 })
   }
-  console.log('[ably-webhook] Signature verification OK')
 
   let parsed: { items?: AblyWebhookItem[] }
   try {
