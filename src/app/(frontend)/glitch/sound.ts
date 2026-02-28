@@ -1,10 +1,26 @@
 import { zzfxPlay, type ZzfxParams } from './zzfx'
 
 let audioCtx: AudioContext | null = null
+let listenerAdded = false
 
 function getAudioCtx(): AudioContext {
   if (!audioCtx || audioCtx.state === 'closed') {
     audioCtx = new AudioContext()
+    // Browsers suspend AudioContext until a user gesture. Register a one-time
+    // listener so any click/tap/keypress unlocks audio for sounds triggered by
+    // non-interactive events (e.g. playerJoined, challenge).
+    if (typeof document !== 'undefined' && !listenerAdded) {
+      listenerAdded = true
+      const unlock = () => {
+        if (audioCtx?.state === 'suspended') audioCtx.resume()
+        document.removeEventListener('click', unlock)
+        document.removeEventListener('touchstart', unlock)
+        document.removeEventListener('keydown', unlock)
+      }
+      document.addEventListener('click', unlock)
+      document.addEventListener('touchstart', unlock)
+      document.addEventListener('keydown', unlock)
+    }
   }
   return audioCtx
 }
@@ -31,6 +47,10 @@ const sounds = {
   playerJoined:  [.8,,284,.02,.19,.13,1,2.9,21,,,,,,56,,,.68,.3,,486] as ZzfxParams,
   challenge:     [,,75,.01,.08,.18,3,.7,7,12,,,,.2,,.1,.18,.47,.07,,-1548] as ZzfxParams,
 } as const
+
+// Eagerly create the AudioContext so the unlock listener is registered
+// before any sound needs to play.
+if (typeof document !== 'undefined') getAudioCtx()
 
 export type SoundEffect = keyof typeof sounds
 
