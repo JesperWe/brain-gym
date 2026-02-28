@@ -686,9 +686,11 @@ function GlitchPageInner() {
         publishMessage(gameChannelRef.current, result)
       }
 
-      // Update presence with lastGame
+      // Update presence with lastGame — keep currentGame set so opponent
+      // doesn't mistake this for a forfeit (presence update may arrive before game-end message)
       if (playersChannelRef.current) {
         updatePresence(playersChannelRef.current, buildPresence({
+          currentGame: mpChannel,
           lastGame: {
             opponent: mpRecord.opponent,
             score: mpRecord.score,
