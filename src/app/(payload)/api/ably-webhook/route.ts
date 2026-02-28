@@ -102,6 +102,7 @@ export async function POST(request: Request) {
             const data = typeof pm.data === 'string' ? JSON.parse(pm.data) : pm.data
             const name = data?.name || pm.clientId
             const avatar = data?.avatar || '🤖'
+            console.log(`[ably-webhook] Upserting player: clientId=${pm.clientId}, name=${name}, avatar=${avatar}`)
             await upsertPlayer(payload, pm.clientId, name, avatar)
           }
         }

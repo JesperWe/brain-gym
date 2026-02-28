@@ -7,9 +7,9 @@ export const Players: CollectionConfig = {
   },
   access: {
     read: () => true,
-    create: () => false,
-    update: () => false,
-    delete: () => false,
+    create: ({ req }) => !!req.user,
+    update: ({ req }) => !!req.user,
+    delete: ({ req }) => !!req.user,
   },
   fields: [
     {
