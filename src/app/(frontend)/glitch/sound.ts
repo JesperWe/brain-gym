@@ -3,7 +3,9 @@ import { zzfxPlay, type ZzfxParams } from './zzfx'
 let audioCtx: AudioContext | null = null
 
 function getAudioCtx(): AudioContext {
-  if (!audioCtx) audioCtx = new AudioContext()
+  if (!audioCtx || audioCtx.state === 'closed') {
+    audioCtx = new AudioContext()
+  }
   return audioCtx
 }
 
@@ -33,5 +35,7 @@ const sounds = {
 export type SoundEffect = keyof typeof sounds
 
 export function playSound(name: SoundEffect) {
-  zzfxPlay(getAudioCtx(), [...sounds[name]])
+  const ctx = getAudioCtx()
+  if (ctx.state === 'suspended') ctx.resume()
+  zzfxPlay(ctx, [...sounds[name]])
 }
