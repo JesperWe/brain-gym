@@ -407,20 +407,6 @@ function GlitchPageInner() {
         gameEndTimeRef.current = Date.now() + duration * 60 * 1000
         setCurrentScreen('game')
 
-        // Set game end timer
-        if (isMultiplayer && mpRole === 'host') {
-          const gameTimer = setTimeout(() => {
-            // Publish game-end
-            if (gameChannelRef.current) {
-              publishMessage(gameChannelRef.current, { type: 'game-end' })
-            }
-            endGame()
-          }, duration * 60 * 1000)
-          gameTimerRef.current = gameTimer
-        } else if (!isMultiplayer) {
-          // Single player doesn't need a separate game end timer - handled by scheduleNext
-        }
-
         doNextQuestion()
         return
       }
