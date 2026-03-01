@@ -8,6 +8,7 @@ export interface PlayerPresenceData {
   currentOpponent: string | null
   currentScore: number
   currentOpponentScore: number
+  waitingForId: string | null
   lastGame: {
     opponent: string
     score: number

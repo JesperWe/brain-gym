@@ -76,6 +76,7 @@ export default function HomePage() {
   const [challengeTarget, setChallengeTarget] = useState<PlayerPresenceData | null>(null)
   const [challengeDuration, setChallengeDuration] = useState(1)
   const [waitingFor, setWaitingFor] = useState<string | null>(null)
+  const [waitingForId, setWaitingForId] = useState<string | null>(null)
   const [incomingInvite, setIncomingInvite] = useState<GameInvite | null>(null)
   const [deniedBy, setDeniedBy] = useState<{ name: string; avatar: string } | null>(null)
 
@@ -83,6 +84,7 @@ export default function HomePage() {
   const playerRef = useRef<PlayerInfo | null>(null)
   const challengeDurationRef = useRef(1)
   const knownPlayerIdsRef = useRef<Set<string>>(new Set())
+  const incomingInviteRef = useRef<GameInvite | null>(null)
 
   // Keep refs in sync
   useEffect(() => {
@@ -91,6 +93,9 @@ export default function HomePage() {
   useEffect(() => {
     challengeDurationRef.current = challengeDuration
   }, [challengeDuration])
+  useEffect(() => {
+    incomingInviteRef.current = incomingInvite
+  }, [incomingInvite])
 
   // Load player on mount
   useEffect(() => {
@@ -107,6 +112,7 @@ export default function HomePage() {
     function handlePageShow(e: PageTransitionEvent) {
       if (e.persisted) {
         setWaitingFor(null)
+        setWaitingForId(null)
         setChallengeTarget(null)
         setIncomingInvite(null)
       }
@@ -136,6 +142,7 @@ export default function HomePage() {
         currentOpponent: null,
         currentScore: 0,
         currentOpponentScore: 0,
+        waitingForId: null,
         lastGame: null,
       }
 
@@ -174,6 +181,15 @@ export default function HomePage() {
         }
         knownPlayerIdsRef.current = new Set(players.map((p) => p.playerId))
 
+        // Dismiss incoming invite if challenger left or cancelled
+        const invite = incomingInviteRef.current
+        if (invite) {
+          const challenger = players.find((p) => p.playerId === invite.fromPlayerId)
+          if (!challenger || challenger.waitingForId !== me?.playerId) {
+            setIncomingInvite(null)
+          }
+        }
+
         setOnlinePlayers(players)
       })
 
@@ -199,6 +215,7 @@ export default function HomePage() {
             router.push(`/glitch?multiplayer=true&channel=${encodeURIComponent(channelName)}&duration=${duration}&role=host&opponentName=${encodeURIComponent(response.fromName)}&opponentAvatar=${encodeURIComponent(response.fromAvatar)}&opponentId=${encodeURIComponent(response.fromPlayerId)}`)
           } else {
             setWaitingFor(null)
+            setWaitingForId(null)
             setDeniedBy({ name: response.fromName, avatar: response.fromAvatar })
           }
         }
@@ -236,11 +253,20 @@ export default function HomePage() {
           currentOpponent: null,
           currentScore: 0,
           currentOpponentScore: 0,
+          waitingForId: null,
           lastGame,
         }).catch(() => {})
       }
     }).catch(() => {})
   }, [player?.name, player?.avatar, player?.playerId])
+
+  // Sync waitingForId into presence so the opponent can detect cancellation
+  useEffect(() => {
+    if (!player || !ablyChannelRef.current) return
+    const self = onlinePlayers.find((p) => p.playerId === player.playerId)
+    if (!self || self.waitingForId === waitingForId) return
+    updatePresence(ablyChannelRef.current, { ...self, waitingForId }).catch(() => {})
+  }, [waitingForId, player, onlinePlayers])
 
   function openEdit() {
     setDraftName(player?.name ?? '')
@@ -278,6 +304,7 @@ export default function HomePage() {
       .publish('game-event', invite)
       .catch(() => {})
     setWaitingFor(challengeTarget.name)
+    setWaitingForId(challengeTarget.playerId)
     setChallengeTarget(null)
   }
 
@@ -391,22 +418,33 @@ export default function HomePage() {
       {/* Online Players */}
       {player && selfFirst.length > 0 && !waitingFor && (
         <div className="w-full max-w-md">
-          <label className="block text-sm font-semibold uppercase tracking-widest text-glitch-label mb-3 text-center">
-            Challenge a friend!
-          </label>
-          <div className="grid grid-cols-2 gap-2.5">
-            {selfFirst.map((p) => {
-              const isSelf = p.playerId === player.playerId
-              return (
-                <PlayerCard
-                  key={p.playerId}
-                  player={p}
-                  isSelf={isSelf}
-                  onClick={isSelf ? undefined : () => handleChallenge(p)}
-                />
-              )
-            })}
-          </div>
+          {selfFirst.length === 1 ? (
+            <>
+              <div className="flex justify-center">
+                <PlayerCard player={selfFirst[0]} isSelf={true} />
+              </div>
+              <p className="text-sm text-glitch-muted text-center mt-3">No other players online.</p>
+            </>
+          ) : (
+            <>
+              <label className="block text-sm font-semibold uppercase tracking-widest text-glitch-label mb-3 text-center">
+                Challenge a friend!
+              </label>
+              <div className="grid grid-cols-2 gap-2.5">
+                {selfFirst.map((p) => {
+                  const isSelf = p.playerId === player.playerId
+                  return (
+                    <PlayerCard
+                      key={p.playerId}
+                      player={p}
+                      isSelf={isSelf}
+                      onClick={isSelf ? undefined : () => handleChallenge(p)}
+                    />
+                  )
+                })}
+              </div>
+            </>
+          )}
         </div>
       )}
 

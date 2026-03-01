@@ -52,6 +52,7 @@ export function useMultiplayer(opts: UseMultiplayerOptions): UseMultiplayerRetur
       currentOpponent: null,
       currentScore: s.correctCount,
       currentOpponentScore: s.opponentScore,
+      waitingForId: null,
       lastGame: null,
       ...overrides,
     }

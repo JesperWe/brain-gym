@@ -48,7 +48,9 @@ export function ResultsScreen({
 
             <div className="mp-result-card">
               <div className="text-4xl mb-2">{opponentAvatar || '🤖'}</div>
-              <div className="text-lg font-semibold text-white mb-1">{opponentName || 'Opponent'}</div>
+              <div className="text-lg font-semibold text-white mb-1">
+                {opponentName || 'Opponent'}
+              </div>
               <div className="text-4xl font-extrabold text-glitch-accent">{opponentScore}</div>
             </div>
           </div>
@@ -83,7 +85,7 @@ export function ResultsScreen({
           <div className="text-xl font-semibold mb-3">{latest.name}</div>
           <div className="text-6xl font-extrabold text-glitch-accent mb-1">{latest.percent}%</div>
           <div className="text-glitch-muted text-sm mb-1">
-            {latest.correct} correct out of {latest.total} questions
+            {latest.correct} points from {latest.total} questions
           </div>
           <div className="text-glitch-muted text-sm mb-1">
             {latest.duration} minute{latest.duration > 1 ? 's' : ''} game
@@ -117,9 +119,7 @@ export function ResultsScreen({
                   <div
                     key={i}
                     className={`flex items-center gap-2 px-2.5 py-2 rounded-md text-sm ${
-                      i === 0
-                        ? 'bg-glitch-accent/15 border border-glitch-accent/30'
-                        : 'bg-glass-4'
+                      i === 0 ? 'bg-glitch-accent/15 border border-glitch-accent/30' : 'bg-glass-4'
                     }`}
                   >
                     <span className="text-lg">{g.avatar}</span>

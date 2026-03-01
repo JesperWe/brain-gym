@@ -14,7 +14,8 @@
       "Bash(npx next:*)",
       "Bash(npx vitest:*)",
       "Bash(git push:*)",
-      "WebFetch(domain:payloadcms.com)"
+      "WebFetch(domain:payloadcms.com)",
+      "Bash(pnpm test:int:*)"
     ]
   }
 }

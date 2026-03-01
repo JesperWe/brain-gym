@@ -482,6 +482,108 @@ describe('Multiplayer - Ably integration', () => {
     challengerCh.unsubscribe('game-event')
     await soloCh.presence.leave()
   })
+
+  it('should detect invite cancellation when challenger clears waitingForId in presence', async () => {
+    const host = createClient('cancel-host')
+    const guest = createClient('cancel-guest')
+    clients.push(host, guest)
+    await Promise.all([waitForConnection(host), waitForConnection(guest)])
+
+    const hostCh = host.channels.get(TEST_CHANNEL + '-cancel1')
+    const guestCh = guest.channels.get(TEST_CHANNEL + '-cancel1')
+
+    // Host enters presence with waitingForId targeting guest
+    await hostCh.presence.enter({
+      playerId: 'cancel-host',
+      name: 'Host',
+      avatar: '🦊',
+      waitingForId: 'cancel-guest',
+    })
+
+    await guestCh.presence.enter({
+      playerId: 'cancel-guest',
+      name: 'Guest',
+      avatar: '🐱',
+      waitingForId: null,
+    })
+
+    // Guest verifies host is waiting for them
+    const members1 = await guestCh.presence.get()
+    const hostBefore = members1.find((m) => m.clientId === 'cancel-host')
+    expect(hostBefore!.data.waitingForId).toBe('cancel-guest')
+
+    // Host cancels (e.g. back button) — clears waitingForId
+    const presenceChanged = new Promise<Ably.PresenceMessage[]>((resolve) => {
+      guestCh.presence.subscribe('update', async () => {
+        const members = await guestCh.presence.get()
+        resolve(members)
+      })
+    })
+
+    await hostCh.presence.update({
+      playerId: 'cancel-host',
+      name: 'Host',
+      avatar: '🦊',
+      waitingForId: null,
+    })
+
+    const membersAfter = await presenceChanged
+    const hostAfter = membersAfter.find((m) => m.clientId === 'cancel-host')
+    expect(hostAfter!.data.waitingForId).toBeNull()
+
+    guestCh.presence.unsubscribe()
+    await hostCh.presence.leave()
+    await guestCh.presence.leave()
+  })
+
+  it('should detect invite cancellation when challenger leaves presence (disconnect)', async () => {
+    const host = createClient('cancel-dc-host')
+    const guest = createClient('cancel-dc-guest')
+    clients.push(host, guest)
+    await Promise.all([waitForConnection(host), waitForConnection(guest)])
+
+    const hostCh = host.channels.get(TEST_CHANNEL + '-cancel2')
+    const guestCh = guest.channels.get(TEST_CHANNEL + '-cancel2')
+
+    // Host enters with waitingForId targeting guest
+    await hostCh.presence.enter({
+      playerId: 'cancel-dc-host',
+      name: 'Host',
+      avatar: '🦊',
+      waitingForId: 'cancel-dc-guest',
+    })
+
+    await guestCh.presence.enter({
+      playerId: 'cancel-dc-guest',
+      name: 'Guest',
+      avatar: '🐱',
+      waitingForId: null,
+    })
+
+    // Guest verifies host is present
+    const members1 = await guestCh.presence.get()
+    const hostPresent = members1.find((m) => m.clientId === 'cancel-dc-host')
+    expect(hostPresent).toBeDefined()
+
+    // Host disconnects — simulates tab close / connectivity loss
+    const hostLeft = new Promise<void>((resolve) => {
+      guestCh.presence.subscribe('leave', (msg) => {
+        if (msg.clientId === 'cancel-dc-host') resolve()
+      })
+    })
+
+    await hostCh.presence.leave()
+
+    await hostLeft
+
+    // Guest should no longer see host in presence
+    const membersAfter = await guestCh.presence.get()
+    const hostGone = membersAfter.find((m) => m.clientId === 'cancel-dc-host')
+    expect(hostGone).toBeUndefined()
+
+    guestCh.presence.unsubscribe()
+    await guestCh.presence.leave()
+  })
 })
 
 describe('Game History - getLastGame (unit)', () => {

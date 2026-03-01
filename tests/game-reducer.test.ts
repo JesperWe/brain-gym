@@ -6,6 +6,7 @@ import {
   type GameAction,
 } from '@/app/(frontend)/glitch/game-reducer'
 import type { Question, GameRecord } from '@/app/(frontend)/glitch/types'
+import { parseGlitchParams } from '@/app/(frontend)/glitch/parse-params'
 
 // ── Helpers ──
 
@@ -749,5 +750,144 @@ describe('Score accumulation', () => {
     // Opponent correct again → lockout
     s = apply(s, { type: 'OPPONENT_ANSWER', selectedValue: 42, isCorrect: true, points: 2 })
     expect(s.opponentScore).toBe(3)
+  })
+})
+
+// ── URL param parsing ──
+
+function params(query: string): URLSearchParams {
+  return new URLSearchParams(query)
+}
+
+describe('parseGlitchParams', () => {
+  it('no params → single-player', () => {
+    const p = parseGlitchParams(params(''))
+    expect(p.isMultiplayer).toBe(false)
+    expect(p.mpRole).toBeNull()
+    expect(p.mpDuration).toBe(1)
+  })
+
+  it('valid multiplayer URL → multiplayer mode', () => {
+    const p = parseGlitchParams(params(
+      'multiplayer=true&channel=game-123&duration=2&role=host&opponentName=Alice&opponentAvatar=🦊&opponentId=abc',
+    ))
+    expect(p.isMultiplayer).toBe(true)
+    expect(p.mpChannel).toBe('game-123')
+    expect(p.mpDuration).toBe(2)
+    expect(p.mpRole).toBe('host')
+    expect(p.mpOpponentName).toBe('Alice')
+    expect(p.mpOpponentAvatar).toBe('🦊')
+    expect(p.mpOpponentId).toBe('abc')
+  })
+
+  it('valid guest URL → multiplayer guest', () => {
+    const p = parseGlitchParams(params(
+      'multiplayer=true&channel=game-456&duration=3&role=guest&opponentName=Bob&opponentAvatar=🐱&opponentId=def',
+    ))
+    expect(p.isMultiplayer).toBe(true)
+    expect(p.mpRole).toBe('guest')
+  })
+
+  it('multiplayer=true but missing channel → single-player fallback', () => {
+    const p = parseGlitchParams(params('multiplayer=true&role=host&duration=2'))
+    expect(p.isMultiplayer).toBe(false)
+    expect(p.mpRole).toBeNull()
+  })
+
+  it('multiplayer=true but missing role → single-player fallback', () => {
+    const p = parseGlitchParams(params('multiplayer=true&channel=game-123&duration=2'))
+    expect(p.isMultiplayer).toBe(false)
+    expect(p.mpRole).toBeNull()
+  })
+
+  it('multiplayer=true but invalid role → single-player fallback', () => {
+    const p = parseGlitchParams(params('multiplayer=true&channel=game-123&role=spectator'))
+    expect(p.isMultiplayer).toBe(false)
+    expect(p.mpRole).toBeNull()
+  })
+
+  it('multiplayer=false with other params → single-player', () => {
+    const p = parseGlitchParams(params('multiplayer=false&channel=game-123&role=host'))
+    expect(p.isMultiplayer).toBe(false)
+  })
+
+  it('random unknown params → single-player, no crash', () => {
+    const p = parseGlitchParams(params('foo=bar&baz=123'))
+    expect(p.isMultiplayer).toBe(false)
+    expect(p.mpDuration).toBe(1)
+    expect(p.mpOpponentName).toBe('')
+  })
+
+  it('duration clamped to 1-5 range', () => {
+    expect(parseGlitchParams(params('multiplayer=true&channel=c&role=host&duration=0')).mpDuration).toBe(1)
+    expect(parseGlitchParams(params('multiplayer=true&channel=c&role=host&duration=-5')).mpDuration).toBe(1)
+    expect(parseGlitchParams(params('multiplayer=true&channel=c&role=host&duration=10')).mpDuration).toBe(5)
+    expect(parseGlitchParams(params('multiplayer=true&channel=c&role=host&duration=3')).mpDuration).toBe(3)
+  })
+
+  it('non-numeric duration → defaults to 1', () => {
+    const p = parseGlitchParams(params('multiplayer=true&channel=c&role=host&duration=abc'))
+    expect(p.mpDuration).toBe(1)
+  })
+
+  it('missing optional opponent fields → empty strings', () => {
+    const p = parseGlitchParams(params('multiplayer=true&channel=c&role=host'))
+    expect(p.isMultiplayer).toBe(true)
+    expect(p.mpOpponentName).toBe('')
+    expect(p.mpOpponentAvatar).toBe('')
+    expect(p.mpOpponentId).toBe('')
+  })
+
+  it('URL-encoded values are decoded correctly', () => {
+    const p = parseGlitchParams(params(
+      'multiplayer=true&channel=game%20room&role=guest&opponentName=Dr.%20Evil',
+    ))
+    expect(p.isMultiplayer).toBe(true)
+    expect(p.mpChannel).toBe('game room')
+    expect(p.mpOpponentName).toBe('Dr. Evil')
+  })
+
+  it('stale multiplayer URL (re-navigated) produces valid initial state', () => {
+    // Valid multiplayer URL → multiplayer initial state
+    const mp = parseGlitchParams(params('multiplayer=true&channel=c&role=host'))
+    const mpState = createInitialState(mp.isMultiplayer)
+    expect(mpState.phase).toBe('countdown')
+
+    // Same URL replayed after game (params stripped) → single-player
+    const stale = parseGlitchParams(params(''))
+    const staleState = createInitialState(stale.isMultiplayer)
+    expect(staleState.phase).toBe('setup')
+  })
+})
+
+describe('parseGlitchParams → createInitialState integration', () => {
+  it('single-player URL → setup phase', () => {
+    const p = parseGlitchParams(params(''))
+    const s = createInitialState(p.isMultiplayer)
+    expect(s.phase).toBe('setup')
+  })
+
+  it('valid multiplayer URL → countdown phase', () => {
+    const p = parseGlitchParams(params('multiplayer=true&channel=c&role=host'))
+    const s = createInitialState(p.isMultiplayer)
+    expect(s.phase).toBe('countdown')
+  })
+
+  it('invalid multiplayer URL (missing channel) → setup phase (not stuck in countdown)', () => {
+    const p = parseGlitchParams(params('multiplayer=true&role=host'))
+    const s = createInitialState(p.isMultiplayer)
+    expect(s.phase).toBe('setup')
+  })
+
+  it('invalid multiplayer URL (missing role) → setup phase (not stuck in countdown)', () => {
+    const p = parseGlitchParams(params('multiplayer=true&channel=c'))
+    const s = createInitialState(p.isMultiplayer)
+    expect(s.phase).toBe('setup')
+  })
+
+  it('invalid multiplayer URL (bad role) → setup phase (not stuck in countdown)', () => {
+    const p = parseGlitchParams(params('multiplayer=true&channel=c&role=viewer'))
+    const s = createInitialState(p.isMultiplayer)
+    expect(s.phase).toBe('setup')
   })
 })

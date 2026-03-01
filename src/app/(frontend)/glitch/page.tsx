@@ -15,6 +15,7 @@ import type { GameState } from './game-reducer'
 import { useGameTimers } from './use-game-timers'
 import { useMultiplayer } from './use-multiplayer'
 import { SetupScreen, CountdownScreen, ForfeitScreen, ResultsScreen, GameScreen } from './screens'
+import { parseGlitchParams } from './parse-params'
 import './glitch.css'
 
 export default function GlitchPage() {
@@ -28,13 +29,16 @@ export default function GlitchPage() {
 function GlitchPageInner() {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const isMultiplayer = searchParams.get('multiplayer') === 'true'
-  const mpChannel = searchParams.get('channel') || ''
-  const mpDuration = parseInt(searchParams.get('duration') || '1', 10)
-  const mpRole = searchParams.get('role') as 'host' | 'guest' | null
-  const mpOpponentName = searchParams.get('opponentName') || ''
-  const mpOpponentAvatar = searchParams.get('opponentAvatar') || ''
-  const mpOpponentId = searchParams.get('opponentId') || ''
+
+  // Parse and validate URL params once on mount, then clean the URL
+  // so back-button navigation won't replay a stale multiplayer game.
+  const [params] = useState(() => parseGlitchParams(searchParams))
+  const { isMultiplayer, mpChannel, mpDuration, mpRole, mpOpponentName, mpOpponentAvatar, mpOpponentId } = params
+  useEffect(() => {
+    if (searchParams.toString()) {
+      window.history.replaceState(null, '', '/glitch')
+    }
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Player identity
   const [playerName, setPlayerName] = useState('')
@@ -127,6 +131,7 @@ function GlitchPageInner() {
         currentOpponent: null,
         currentScore: 0,
         currentOpponentScore: 0,
+        waitingForId: null,
         lastGame: null,
       }).catch(() => {})
 
